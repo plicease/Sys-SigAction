@@ -9,7 +9,7 @@
 package Sys::SigAction;
 require 5.005;
 use strict;
-use warnings;
+#use warnings;
 use POSIX ':signal_h' ;
 require Exporter;
 use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
@@ -18,19 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = 0.01;
-
-my $have_threads = 0;
-BEGIN {
-   eval { 
-      require thread;
-      $have_threads = 1;
-   };
-   if ( not $have_threads )
-   {
-      sub lock { "DUMMY" }
-   }
-};
+$VERSION = 0.02;
 
 use Config;
 my %signame = ();
@@ -146,7 +134,8 @@ sub DESTROY
    }
    else
    {
-      $SIG{$_[0]->{'SIG'}} = $_[0]->{'ACT'} ;
+      #set it to default if not defined (suppress undefined warning)
+      $SIG{$_[0]->{'SIG'}} = defined $_[0]->{'ACT'} ? $_[0]->{'ACT'} : 'DEFAULT' ;
    }
    return;
 }
@@ -211,31 +200,62 @@ or
 
 =head1 ABSTRACT
 
-Implements sig_sethandler, which  sets up a signal handler and
-(optionally) returns an object which causes the signal handler to be
-reset to the previous value, when it goes out of scope.
+This module implements C<set_sig_handler()>, which sets up a signal
+handler and (optionally) returns an object which causes the signal
+handler to be reset to the previous value, when it goes out of scope.
+
+Also implemented is C<timeout_call()> which takes a timeout value and
+a code reference, and executes the code reference wrapped with and
+alarm timeout.
+
+Finally, two convenience routines are defined which allow one to get the
+signal name from the number -- C<sig_name()>, and get the signal number
+from the name -- C<sig_number()>.
 
 =head1 DESCRIPTION
 
-Perl has been changing the way unix signals are implemented in an attempt
-to make them safer.  Changes were made between perl 5.6 and perl 5.8,
-and more changes have been made in versions after perl 5.8.  The 5.8
-changes broke this author's database connection timeouts.  Prior to
-version 5.8 a signal handlers would interupt system calls like connect()
-amd perl would immediately call the signal handler.
+Prior to version 5.8.0 perl implemented 'unsafe' signal handling.
+The reason it is consider unsafe, is that there is a risk that a
+signal will arrive, and be handled while perl is changing internal
+data structures.  This can result in all kinds of subtle and not so
+subtle problems.  For this reason it as always been recommended that
+one do as little as possible in a signal handler, and only variables
+that already exist be manipulated.
 
-From the perl 5.8.2 perlvar man page:
+Perl 5.8.0 and later versions implements 'safe' signal handling
+on platforms which support the POSIX sigaction() function.  This is
+accomplished by having perl note that a signal has arrived, but deferring
+the execution of the signal handler until such time as it is safe to do
+so.  Unfortunately these changes can break some existing scripts, if they
+depended on a system routine being interupted by the signal's arrival.
+The perl 5.8.0 implementation was modified further in version 5.8.2.
+
+From the perl 5.8.2 B<perlvar> man page:
 
    The default delivery policy of signals changed in Perl 5.8.0 
    from immediate (also known as "unsafe") to deferred, also 
    known as "safe signals".  
 
-Infortunately this 'deferred signal' approach causes system calls to
-be retried prior to the signal handler being called.  The result is
-that might could never return. This is the case with the DBD-Oracle
-connect call, when the host on which a database resides is not available.
-This makes it impossible to implement open timeouts, at least with code
-looks like this:
+
+The implementation of this changed the C<sa_flags> with which
+the signal handler is installed by perl, and it causes some
+system routines (like connect()) to return EINTR, instead of another error
+when the signal arrives.  The problem comes when the code that made 
+the system call sees the EINTR code and decides it's going to call it 
+again before returning. Perl doesn't do this but some libraries do, including for
+instance, the Oracle OCI library.
+
+Thus the 'deferred signal' approach (as implemented by default in
+perl 5.8 and later) results in some system calls to being
+retried prior to the signal handler being called by perl. 
+This breaks timeout logic for DBD-Oracle which works with
+earlier versions of perl.  This can be particularly vexing,
+the host on which a database resides is not available:  C<DBI-E<gt>connect()>
+hangs for minutes before returning an error (and cannot even be interupted
+with control-C, even when the intended timeout is only sections. 
+this is because SIGINT appears to be deferred as well.  The
+result is that it is impossible to implement open timeouts with code
+that looks like this in perl 5.8.0 and later:
 
    eval {
       local $SIG{ALRM} = sub { die "timeout" };
@@ -246,48 +266,58 @@ looks like this:
    alarm 0;
    die if $@;
 
-The workaround, if your system has sigaction(), is to use
-POSIX::sigaction() to install the signal handler.  With sigaction(),
-one gets control over both the signal mask, and the flags that are used
-to install the handler. Further, with perl 5.8.2 and later a 'safe'
-switch is provided which can be used to ask for 'safe' signal handling.
-Using sigaction() does ensure that the system call is interupted, if
-one calls die within the signal handler.  This is not longer the case
-when one uses $SIG{name} to set signal handlers in perls >= 5.8.0.
+The solution, if your system has the POSIX sigaction() function,
+is to use perl's C<POSIX::sigaction()> to install the signal handler.
+With C<sigaction()>, one gets control over both the signal mask, and the
+C<sa_flags> that are used to install the handler.  Further, with perl
+5.8.2 and later, a 'safe' switch is provided which can be used to ask
+for safe(r) signal handling.  Using sigaction() does ensure that the
+system call is interupted, if one calls die within the signal handler.
+This is not longer the case when one uses C<$SIG{name}> to set signal
+handlers in perls >= 5.8.0.
 
-The usage of sigaction() however is not well documented however and in
-perls < 5.8.0 it does not work at all. (fortunately thats OK becase just
-setting $SIG does work for this purpose in that case.)  Using sigaction()
-requires approximately 4 or 5 lines of code where previously one only
-had to set a code reference into the %SIG array.
+The usage of sigaction() is not well documented however, and in perl
+versions less than 5.8.0, it does not work at all. (But thats OK, because
+just setting C<$SIG> does work in that case.)  Using sigaction() requires
+approximately 4 or 5 lines of code where previously one only had to set
+a code reference into the %SIG array.
+
+Unfortunately, at least with perl 5.8.0, the result is that doing this
+effectively reverts to the 'unsafe' signals behavior.  It is not clear
+whether this would be the case in perl 5.8.2, since safe flag can be used
+to ask for safe signal handling.  I suspect this separates the the logic
+of which C<sa_flags> are used install the handler, and whether deferred
+signal is used.
 
 This module wraps up the POSIX:: routines and objects necessary to call
-sigaction() in a way that is as efficient from coding perspective as
-just setting a localized $SIG{SIGNAL} with a code reference, with the
-advantange that the user has control over the flags passed to sigaction().
-By default no additional args are passed to sigaction(), and the signal
-handler will be called when a signal (such as SIGALRM) is delivered.
+sigaction() in a way that is as efficient from coding perspective as just
+setting a localized C<$SIG{SIGNAL}> with a code reference.  Further, the
+user has control over the C<sa_flags> passed to sigaction().  By default,
+if no additional args are passed to sigaction(), and the signal handler
+will be called when a signal (such as SIGALRM) is delivered.
 
-While sigaction() is not fully functional in perl versions less than 5.8,
-this module has been tested with perls going back to 5.005 (solaris).
-With perls < 5.8 this modules just sets $SIG; the flags, mask and safe
-keys in the attributes hash are silently ignored.
+Since sigaction() is not fully functional in perl versions less than
+5.8, this module implements equivalent behavior using the standard
+C<%SIG> array.  The version checking and implementation of the 'right'
+code is handled by this module, so the user does not have to write perl
+version dependant code.  The attrs hashref argument to set_sig_handler()
+is silently ignored, in perl versions less than 5.8.  This module has
+been tested with perls as old as 5.005 on solaris.
 
-It is hoped that with the use of this module your signal handling behavior
-can be coded in a way that does not change from one perl version to the
-next, and that it makes using sigaction() a little easier.
+It is hoped that with the use of this module, your signal handling
+behavior can be coded in a way that does not change from one perl version
+to the next, and that it makes using sigaction() a little easier.
 
 =head1 FUNCTIONS
 
-=head2  set_sig_handler 
+=head2  set_sig_handler() 
 
    $sig ,$handler ,$attrs 
    
 
-Install a new signal handler and (if not called in a void
-context) returning a Sys::SigAction object containing the 
-old signal handler, which will be restored on object 
-destruction.
+Install a new signal handler and (if not called in a void context)
+returning a Sys::SigAction object containing the old signal handler,
+which will be restored on object destruction.
 
    $sig     is a signal name (without the 'SIG') or number.
 
@@ -311,13 +341,13 @@ destruction.
             safe  => A bolean value requesting 'safe' signal
                      handling (usd in 5.8.2 and greater)
 
-=head2 timeout_call
+=head2 timeout_call()
 
    $timeout ,$coderef 
 
-Given a code reference, and a timeout value (in seconds), timeout() will
-(in an eval) setup a signal handler for SIGALRM which will die,
-set an alarm clock, and execute the code reference.  
+Given a code reference, and a timeout value (in seconds), timeout()
+will (in an eval) setup a signal handler for SIGALRM (which will die),
+set an alarm clock, and execute the code reference.
 
 If the alarm goes off the code will be interupted.  The alarm is
 canceled if the code returns before the alarm is fired.  The routine
@@ -326,7 +356,7 @@ Exceptions thrown by the code executed are propagated out.
 
 The original signal handler is restored, prior to returning to the caller.
 
-=head1 sig_name
+=head2 sig_name()
 
 Return the signal name (string) from a signal number.
 
@@ -335,22 +365,36 @@ ex:
    sig_name( SIGINT ) returns 'INT'
    
 
-=head1 sig_name
+=head2 sig_number()
 
 Return the signal number (integer) from a signal name (minus the SIG part).
 
 ex:
 
-   sig_number( 'INT' ) returns the integer values of SIGINT;
-
+   sig_number( 'INT' ) returns the integer value of SIGINT;
 
 
 =head1 AUTHOR
 
    Lincoln A. Baxter <lab@lincolnbaxter.com.make.me.VALID>
 
+=head1 COPYRIGHT
+
+   Copyright (c) 2004 Lincoln A. Baxter
+   All rights reserved.
+
+   You may distribute under the terms of either the GNU General Public
+   License or the Artistic License, as specified in the Perl README file,
+   with the exception that it cannot be placed on a CD-ROM or similar media
+   for commercial distribution without the prior approval of the author.
+
+
 =head1 SEE ALSO
 
    perldoc perlvar 
    perldoc POSIX
+
+The dbd-oracle-timeout.pod file included with this module. This includes a DBD-Oracle
+test script, which illustrates the us of this module with the DBI with the DBD-Oracle
+driver.
 
