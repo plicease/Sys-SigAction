@@ -3,8 +3,9 @@
 
 #########################
 
-use Test::More tests => 9;
-BEGIN { use_ok('Sys::SigAction') };
+use Test::More ;
+my $tests = 8;
+#BEGIN { use_ok('Sys::SigAction') };
 
 #########################
 
@@ -13,6 +14,7 @@ BEGIN { use_ok('Sys::SigAction') };
 
 use strict;
 #use warnings;
+
 
 use Carp qw( carp cluck croak confess );
 use Data::Dumper;
@@ -45,13 +47,6 @@ sub sigUSR {
    $usr++; 
 }
 
-set_sig_handler( 'HUP' ,\&sigHUP ,{ mask=>[ qw( INT USR1 ) ] ,safe=>1 } );
-set_sig_handler( 'INT' ,\&sigINT ,{ mask=>[ qw( USR1 )] ,safe=>0 } );
-set_sig_handler( 'USR1' ,\&sigUSR ,{ safe=>1 } );
-
-kill HUP => $$;
-
-
 sub sigHUP_2  {
    ok( (++$test == 7) ,'sigHUP_2 called' );
    kill INT => $$;
@@ -62,10 +57,21 @@ sub sigINT_2
 {
    ok( (++$test==8) ,'sigINT_2 called' );
 }
-set_sig_handler( 'INT' ,\&sigINT_2 ,{ mask=>[ qw( USR1 )] ,safe=>0 } );
-set_sig_handler( 'HUP' ,\&sigHUP_2 ,{ mask=>[ qw( )] ,safe=>0 } );
 
-kill HUP => $$;
+SKIP: { 
+   plan skip_all => "requires perl 5.8.2 or later" if ( $] < 5.008002 ); 
+   plan tests => $tests;
+   set_sig_handler( 'HUP' ,\&sigHUP ,{ mask=>[ qw( INT USR1 ) ] ,safe=>1 } );
+   set_sig_handler( 'INT' ,\&sigINT ,{ mask=>[ qw( USR1 )] ,safe=>0 } );
+   set_sig_handler( 'USR1' ,\&sigUSR ,{ safe=>1 } );
+
+   kill HUP => $$;
+
+   set_sig_handler( 'INT' ,\&sigINT_2 ,{ mask=>[ qw( USR1 )] ,safe=>0 } );
+   set_sig_handler( 'HUP' ,\&sigHUP_2 ,{ mask=>[ qw( )] ,safe=>0 } );
+
+   kill HUP => $$;
+}
 
 #ok( $int ,'sigINT called' );
 #ok( $usr ,"sigUSR called $usr" );

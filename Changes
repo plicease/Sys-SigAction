@@ -8,6 +8,11 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.03  4 April 2004
+
+   Skip attrs.t test if perl version < 5.8.2 (rt.cpan.org ticket #5948)
+   Rename dbd-oracle-timout.PL -> dbd-oracle-timeout.POD 
+
 =head2 Changes in Sys::SigAction 0.02  3 February 2004
 
    Comment out 'use warnings' for $] < 5.006
