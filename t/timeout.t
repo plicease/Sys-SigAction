@@ -23,7 +23,7 @@ use POSIX  ':signal_h' ;
 
 sub hash { die { hash=>1 }; }
 sub immediate { die "immediate"; }
-sub forever { my $t = <STDIN>; } #read from stdin as a blocking call
+sub forever { while ( 1 ) { 1; } } #read from stdin as a blocking call
 my $ret = 0;
 
 eval { 

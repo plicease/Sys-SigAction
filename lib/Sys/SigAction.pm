@@ -18,7 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = 0.03;
+$VERSION = 0.04;
 
 use Config;
 my %signame = ();

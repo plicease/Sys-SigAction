@@ -8,26 +8,39 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.04  7 April 2004
+
+Modify forever() in timeout.t so just loop instead of trying
+to read from STDIN, which apparently does not block or immediately
+returns an error on some platforms or test environments
+
+Lincoln A Baxter
+
 =head2 Changes in Sys::SigAction 0.03  4 April 2004
 
-   Skip attrs.t test if perl version < 5.8.2 (rt.cpan.org ticket #5948)
-   Rename dbd-oracle-timout.PL -> dbd-oracle-timeout.POD 
+Skip attrs.t test if perl version < 5.8.2 (rt.cpan.org ticket #5948)
+
+Rename dbd-oracle-timout.PL -> dbd-oracle-timeout.POD 
 
 =head2 Changes in Sys::SigAction 0.02  3 February 2004
 
-   Comment out 'use warnings' for $] < 5.006
-   Suppress undefined warning in destructor for $] < 5.008
-   Documentation expansion and cleanup
-   Add dbd-oracle-timeout.PL 
+Comment out 'use warnings' for $] < 5.006
 
-   Lincoln A Baxter
+Suppress undefined warning in destructor for $] < 5.008
+
+Documentation expansion and cleanup
+
+Add dbd-oracle-timeout.PL 
+
+Lincoln A Baxter
 
 =head2 Original version: Sys::SigAction 0.01  17 January 2004
 
-	original version; created by h2xs 1.22 with options:
-		--compat-version=5.5.0 -X --name=Sys::SigAction  \
-      --use-new-tests --skip-warnings --version=0.01
+original version; created by h2xs 1.22 with options:
 
-   Lincoln A Baxter
+   --compat-version=5.5.0 -X --name=Sys::SigAction  \
+   --use-new-tests --skip-warnings --version=0.01
+
+Lincoln A Baxter
 
 =cut
