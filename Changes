@@ -8,6 +8,27 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.06  25 June 2006
+
+Fix setting of SAFE flag in POSIX::sigaction.  In response
+to CPAN bug: http://rt.cpan.org/Ticket/Display.html?id=19916
+Thanks to Steve Purk?, for point this out.
+
+This required NOT setting safe=>1 (changing to to safe=>0)
+in t/attrs.t and the the dbd-oracle test script.
+
+A new test for safe=>1 needs to be developed, which explicitly tests
+deferred signal handling.  I would welcome such a contribution.
+
+Lincoln A Baxter
+
+=head2 Changes in Sys::SigAction 0.05  24 July 2004
+
+Fix typo in POD for mask => thanks to Henri Asseily
+This was apparently never uploaded. :-(
+
+Lincoln A Baxter
+
 =head2 Changes in Sys::SigAction 0.04  7 April 2004
 
 Modify forever() in timeout.t so just loop instead of trying

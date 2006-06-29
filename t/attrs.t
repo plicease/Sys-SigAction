@@ -1,10 +1,15 @@
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl 1.t'
 
+#lab: fixed that setting of SAFE in POSIX::sigaction, and the result
+#is that setting it the test causes the test to break...  so it is now
+#commented out here.
+
 #########################
 
 use Test::More ;
 my $tests = 8;
+
 #BEGIN { use_ok('Sys::SigAction') };
 
 #########################
@@ -61,9 +66,11 @@ sub sigINT_2
 SKIP: { 
    plan skip_all => "requires perl 5.8.2 or later" if ( $] < 5.008002 ); 
    plan tests => $tests;
-   set_sig_handler( 'HUP' ,\&sigHUP ,{ mask=>[ qw( INT USR1 ) ] ,safe=>1 } );
+   #set_sig_handler( 'HUP' ,\&sigHUP ,{ mask=>[ qw( INT USR1 ) ] ,safe=>1 } );
+   set_sig_handler( 'HUP' ,\&sigHUP ,{ mask=>[ qw( INT USR1 ) ] ,safe=>0 } ); #was safe=>1
    set_sig_handler( 'INT' ,\&sigINT ,{ mask=>[ qw( USR1 )] ,safe=>0 } );
-   set_sig_handler( 'USR1' ,\&sigUSR ,{ safe=>1 } );
+  # set_sig_handler( 'USR1' ,\&sigUSR ,{ safe=>1 } );
+   set_sig_handler( 'USR1' ,\&sigUSR ,{ safe=>0 } );
 
    kill HUP => $$;
 

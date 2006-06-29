@@ -233,6 +233,11 @@ The following test script illustrates the use of C<Sys::SigAction>, with
 the DBI interface (DBD-Oracle driver) to implement time out of both connects
 to databases on hosts that are down, and long running sql statements.
 
+Note that with Sys::SigAction version 0.06, this script was changed to explicitly set
+safe=>0 (instead of safe=>1).  The reason is that Sys::SigAction (version 0.04 and less) 
+did not correctly set this paramter on the POSIX::sigaction call.  When that 
+was fixed with version 0.06 this script had to be fixed.
+
 
    #!/usr/bin/env perl
    use 5.006;
@@ -320,7 +325,8 @@ to databases on hosts that are down, and long running sql statements.
          my $code = sub {
                die "timed out on connect to database on missing host\n" ;
          };
-         my $h = set_sig_handler( 'ALRM' ,$code ,{ flags=>0 ,safe=>1 } );
+         #note that if you ask for safe, it will not work...
+         my $h = set_sig_handler( 'ALRM' ,$code ,{ flags=>0 ,safe=>0 } ); 
          alarm(1);
          print "opening testdbfail (missing host test)\n" ;
          $dbh = DBI->connect("dbi:Oracle:testdbfail" ,"na" ,"na" );
@@ -366,7 +372,7 @@ to databases on hosts that are down, and long running sql statements.
                                         $sth->cancel(); 
                                         #dont die (oracle spills its guts)
                                         }
-                                 ,{ mask=>[ qw( INT ALRM ) ] ,safe => 1 } 
+                                 ,{ mask=>[ qw( INT ALRM ) ] ,safe => 0 } 
                                  );
          my $timeout =1;
          print "\ncalling execute with $timeout second timeout\n" ;

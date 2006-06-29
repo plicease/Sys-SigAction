@@ -18,7 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = 0.04;
+$VERSION = 0.06;
 
 use Config;
 my %signame = ();
@@ -76,7 +76,12 @@ sub mk_sig_action($$)
    my @siglist = ();
    foreach (@{$attrs->{mask}}) { push( @siglist ,sig_number($_)); };
    my $mask = POSIX::SigSet->new( @siglist );
-   my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ,$attrs->{safe} );
+   #my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ,$attrs->{safe} );
+   #steve ( SPURKIS@cpan.org submitted  http://rt.cpan.org/Ticket/Display.html?id=19916 
+   #  puts out the above liin is a mis-interpretation of the API for POSIX::SigAcation
+   #  so here is the fix (per his suggestion)... lab:
+   my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ); 
+   $act->safe($attrs->{safe});
    return $act;
 }
 
@@ -107,7 +112,7 @@ sub timeout_call( $$;$ )
    my $timed_out = 0;
    my $ex;
    eval {
-      my $h = sub { $timed_out = 1; die TIMEDOUT; };
+      #lab-20060625 unecessary: my $h = sub { $timed_out = 1; die TIMEDOUT; };
       my $sa = set_sig_handler( SIGALRM ,sub { $timed_out = 1; die TIMEDOUT; } );
       alarm( $timeout );
       &$code; 
@@ -162,7 +167,7 @@ or
    #timeout a system call:
    use Sys::SigAction qw( set_sig_handler );
    eval {
-      my $h = set_sig_handler( 'ALRM' ,\&mysubname ,{ mask=>'ALRM' ,safe=>1 } );
+      my $h = set_sig_handler( 'ALRM' ,\&mysubname ,{ mask=>[ 'ALRM' ] ,safe=>1 } );
       alarm(2)
       ... do something you want to timeout
       alarm(0);
@@ -338,7 +343,7 @@ which will be restored on object destruction.
                ex: [ SIGINT SIGUSR1 ] or
                ex: [ qw( INT USR1 ]
 
-            safe  => A bolean value requesting 'safe' signal
+            safe  => A boolean value requesting 'safe' signal
                      handling (usd in 5.8.2 and greater)
 
 =head2 timeout_call()
