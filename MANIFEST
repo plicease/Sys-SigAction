@@ -4,7 +4,8 @@ Makefile.PL
 META.yml			Module meta-data (added by MakeMaker)
 README
 MANIFEST
-t/attrs.t
+t/mask.t
+t/safe.t
 t/name.t
 t/nested.t
 t/number.t

@@ -18,7 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = 0.06;
+$VERSION = 0.07;
 
 use Config;
 my %signame = ();
@@ -46,6 +46,11 @@ sub sig_number {
    return $sig if $sig =~ m/^\d+$/;
    return $signo{$sig} ;
 }
+#if ( $] < 5008 ) {
+#   #over write definitions of sig_name and sig_number
+#   sub sig_name { warn "sig_name() not supported on perl versions < 5.8.0"; }
+#   sub sig_number { warn "sig_number() not supported on perl versions < 5.8.0"; }
+#}
 
 my $use_sigaction = ( $] >= 5.008 and $Config{d_sigaction} );
 
@@ -80,8 +85,23 @@ sub mk_sig_action($$)
    #steve ( SPURKIS@cpan.org submitted  http://rt.cpan.org/Ticket/Display.html?id=19916 
    #  puts out the above liin is a mis-interpretation of the API for POSIX::SigAcation
    #  so here is the fix (per his suggestion)... lab:
+   #
    my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ); 
-   $act->safe($attrs->{safe});
+   #http://rt.cpan.org/Public/Bug/Display.html?id=21777
+   #2006-09-29: in perl 5.8.0 (RH) $act->safe() is broken 
+   #            safe is not available until 5.8.2
+   #            DAMN... it was in my docs too... 
+   if ( exists( $attrs->{safe} ) )
+   {
+      if ( ( $] < 5.008002 ) && $attrs->{safe} ) 
+      {
+         warn "safe mode is not supported in perl versions less than 5.8.2";
+      }
+      else { 
+         $act->safe($attrs->{safe}); 
+         #print "setting safe=>".$attrs->{safe}."\n";
+      }
+   }
    return $act;
 }
 
@@ -223,7 +243,7 @@ Prior to version 5.8.0 perl implemented 'unsafe' signal handling.
 The reason it is consider unsafe, is that there is a risk that a
 signal will arrive, and be handled while perl is changing internal
 data structures.  This can result in all kinds of subtle and not so
-subtle problems.  For this reason it as always been recommended that
+subtle problems.  For this reason it has always been recommended that
 one do as little as possible in a signal handler, and only variables
 that already exist be manipulated.
 
@@ -344,7 +364,9 @@ which will be restored on object destruction.
                ex: [ qw( INT USR1 ]
 
             safe  => A boolean value requesting 'safe' signal
-                     handling (usd in 5.8.2 and greater)
+                     handling (only in 5.8.2 and greater)
+                     earlier versions will issue a warning if
+                     you use this
 
 =head2 timeout_call()
 

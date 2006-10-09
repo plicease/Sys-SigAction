@@ -8,6 +8,19 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.07  09 Oct 2006
+
+Version 0.06 broke in perl < 5.8.2... (who uses that any more!!!)
+Well someone does... at least on RedHat... I did (do) claim backwards
+compatibility... So I fixed it right this time, by checking the perl 
+version before called the safe accessor on the POSIX::SigAction object.
+
+Still no good test for safe mode... be prepared to send me a test
+if you think safe signal handling is broken... for sure I could
+not get it to work the way I think it should with with deferred 
+signals.
+
+
 =head2 Changes in Sys::SigAction 0.06  25 June 2006
 
 Fix setting of SAFE flag in POSIX::sigaction.  In response
