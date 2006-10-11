@@ -18,7 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = 0.07;
+$VERSION = 0.08;
 
 use Config;
 my %signame = ();
@@ -93,7 +93,7 @@ sub mk_sig_action($$)
    #            DAMN... it was in my docs too... 
    if ( exists( $attrs->{safe} ) )
    {
-      if ( ( $] < 5.008002 ) && $attrs->{safe} ) 
+      if ( ( $] < 5.008002 ) && defined($attrs->{safe}) && $attrs->{safe} ) 
       {
          warn "safe mode is not supported in perl versions less than 5.8.2";
       }

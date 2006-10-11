@@ -8,6 +8,20 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.08  11 Oct 2006
+
+Add extra protection to test of $attrs->(safe} when
+the perl version is between 5.8 and 5.8.2, thanks to 
+Francesco Duranti. Now test for it being defined before
+testing it's value.  It would be a pretty bizarre case 
+for that to happen, but... belt and suspenders... is 
+'safe'.
+
+Fix warning in safe.t which referred to attrs.t (old test name)
+which was renamed to mask.t, to refer to mask.t.
+
+Lincoln
+
 =head2 Changes in Sys::SigAction 0.07  09 Oct 2006
 
 Version 0.06 broke in perl < 5.8.2... (who uses that any more!!!)
@@ -20,6 +34,7 @@ if you think safe signal handling is broken... for sure I could
 not get it to work the way I think it should with with deferred 
 signals.
 
+Lincoln
 
 =head2 Changes in Sys::SigAction 0.06  25 June 2006
 

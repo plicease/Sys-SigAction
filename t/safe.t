@@ -35,7 +35,7 @@ SKIP: {
       
       NOTE: Setting safe=>1... with masked signals... does not seem to work
       the masked signals are not masked; when safe=>0 they are
-      see attrs.t for how we could try it.
+      see mask.t for how we could try it.
 
       If you have an application for safe=>1 and can come up with 
       a test that works in the context of this module's installation

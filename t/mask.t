@@ -95,6 +95,7 @@ SKIP: {
          
 
    set_sig_handler( 'HUP'  ,\&sigHUP  ,{ mask=>[ qw( INT USR1 ) ] } ); #,safe=>0 } );
+   #set_sig_handler( 'HUP'  ,\&sigHUP  ,{ mask=>[ qw( INT USR1 ) ] ,safe=>undef } );
    set_sig_handler( 'INT'  ,\&sigINT_1 ,{ mask=>[ qw( USR1 )] } ); #,safe=>0 } );
    #set_sig_handler( 'INT'  ,\&sigINT_1 ); #,{ safe=>0 } );
    set_sig_handler( 'USR1' ,\&sigUSR_1  ); #,{ safe=>0 } );
