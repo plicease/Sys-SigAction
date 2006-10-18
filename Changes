@@ -8,6 +8,21 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.09  17 Oct 2006
+
+Francesco has pointed out that I still have a special case 
+of safe=>0 broken for perl 5.8.0.  
+
+The perl 5.8.1 build I tested with (I could not find 5.8.0)
+it turns out has .../lib/5.8.1/auto/POSIX/SigAction/safe.al, 
+my previous tests works.
+
+This version of Sys::SigAction now as a test of these
+subtleties in t/safe.t, those still no real test of 
+safe=>1 for perls >= 5.8.2
+
+Lincoln
+
 =head2 Changes in Sys::SigAction 0.08  11 Oct 2006
 
 Add extra protection to test of $attrs->(safe} when

@@ -18,7 +18,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = 0.08;
+$VERSION = 0.09;
 
 use Config;
 my %signame = ();
@@ -54,10 +54,33 @@ sub sig_number {
 
 my $use_sigaction = ( $] >= 5.008 and $Config{d_sigaction} );
 
+sub _attrs_warning($)
+{
+   my ( $attrs ) =  @_ ;
+   #my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ,$attrs->{safe} );
+   #steve ( SPURKIS@cpan.org submitted  http://rt.cpan.org/Ticket/Display.html?id=19916 
+   #  puts out the above liin is a mis-interpretation of the API for POSIX::SigAcation
+   #  so here is the fix (per his suggestion)... lab:
+   #
+   #http://rt.cpan.org/Public/Bug/Display.html?id=21777
+   #2006-09-29: in perl 5.8.0 (RH) $act->safe() is broken 
+   #            safe is not available until 5.8.2
+   #            DAMN... it was in my docs too... 
+   if ( exists( $attrs->{safe} ) )
+   {
+      if ( ( $] < 5.008002 ) && defined($attrs->{safe}) && $attrs->{safe} ) 
+      {
+         warn "safe mode is not supported in perl versions less than 5.8.2";
+         delete $attrs->{safe};
+      }
+   }
+
+}
 sub set_sig_handler( $$;$$ )
 {
    my ( $sig ,$handler ,$attrs ) = @_;      
    $attrs = {} if not defined $attrs;
+   _attrs_warning($attrs);
    if ( not $use_sigaction )
    {
       #warn '$flags not supported in perl versions < 5.8' if $] < 5.008 and defined $flags;
@@ -81,27 +104,8 @@ sub mk_sig_action($$)
    my @siglist = ();
    foreach (@{$attrs->{mask}}) { push( @siglist ,sig_number($_)); };
    my $mask = POSIX::SigSet->new( @siglist );
-   #my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ,$attrs->{safe} );
-   #steve ( SPURKIS@cpan.org submitted  http://rt.cpan.org/Ticket/Display.html?id=19916 
-   #  puts out the above liin is a mis-interpretation of the API for POSIX::SigAcation
-   #  so here is the fix (per his suggestion)... lab:
-   #
+
    my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ); 
-   #http://rt.cpan.org/Public/Bug/Display.html?id=21777
-   #2006-09-29: in perl 5.8.0 (RH) $act->safe() is broken 
-   #            safe is not available until 5.8.2
-   #            DAMN... it was in my docs too... 
-   if ( exists( $attrs->{safe} ) )
-   {
-      if ( ( $] < 5.008002 ) && defined($attrs->{safe}) && $attrs->{safe} ) 
-      {
-         warn "safe mode is not supported in perl versions less than 5.8.2";
-      }
-      else { 
-         $act->safe($attrs->{safe}); 
-         #print "setting safe=>".$attrs->{safe}."\n";
-      }
-   }
    return $act;
 }
 
