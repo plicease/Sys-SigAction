@@ -8,6 +8,12 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.10  24 Oct 2006
+
+Documentation cleanup, thanks to Tim Maher.
+
+Lincoln
+
 =head2 Changes in Sys::SigAction 0.09  17 Oct 2006
 
 Francesco has pointed out that I still have a special case 
