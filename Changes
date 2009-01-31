@@ -8,6 +8,30 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.11  31 Jan 2009
+
+Remove Restriction in License which required permission 
+to include in CDROM media for commercial distribution.
+
+License is now Straight GPL or Artistic as Perl is.
+
+Fix safe attribute for perl >= 5.8.2, but applying patch in 
+(duplicate) bugs:
+
+   http://rt.cpan.org/Ticket/Display.html?id=39599
+   http://rt.cpan.org/Ticket/Display.html?id=39946
+
+Test by cloning mask.t into safe.t in the block for perl => 5.008002 
+and test setting safe attribute. Sadly, using both masked signals
+and safe=>1 at the same time, is still broken.
+
+Add checks for unsupported configurations in Makefile.PL to (hopefully)
+suppress the Smoke test failures for those environments.
+
+Update documentation.
+
+Lincoln
+
 =head2 Changes in Sys::SigAction 0.10  24 Oct 2006
 
 Documentation cleanup, thanks to Tim Maher.

@@ -1,10 +1,8 @@
 #
-#   Copyright (c) 2004 Lincoln A. Baxter
+#   Copyright (c) 2004-2009 Lincoln A. Baxter
 #
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file,
-#   with the exception that it cannot be placed on a CD-ROM or similar media
-#   for commercial distribution without the prior approval of the author.
 
 package Sys::SigAction;
 require 5.005;
@@ -18,7 +16,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 use Config;
 my %signame = ();
@@ -106,6 +104,12 @@ sub mk_sig_action($$)
    my $mask = POSIX::SigSet->new( @siglist );
 
    my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ); 
+
+   #apply patch suggested by CPAN bugs
+   #  http://rt.cpan.org/Ticket/Display.html?id=39599
+   #  http://rt.cpan.org/Ticket/Display.html?id=39946 (these are dups)
+   #using safe mode with masking signals still breaks the masking of signals!
+   $act->safe($attrs->{safe}) if defined $attrs->{safe};
    return $act;
 }
 
@@ -384,7 +388,9 @@ which will be restored on object destruction.
             safe  => A boolean value requesting 'safe' signal
                      handling (only in 5.8.2 and greater)
                      earlier versions will issue a warning if
-                     you use this
+                     you use this  
+
+                     NOTE: This breaks the signal masking
 
 =head2 timeout_call()
 
@@ -421,17 +427,15 @@ ex:
 
 =head1 AUTHOR
 
-   Lincoln A. Baxter <lab@lincolnbaxter.com.make.me.VALID>
+   Lincoln A. Baxter <lab-at-lincolnbaxter-dot-com>
 
 =head1 COPYRIGHT
 
-   Copyright (c) 2004 Lincoln A. Baxter
+   Copyright (c) 2004-2009 Lincoln A. Baxter
    All rights reserved.
 
    You may distribute under the terms of either the GNU General Public
    License or the Artistic License, as specified in the Perl README file,
-   with the exception that it cannot be placed on a CD-ROM or similar media
-   for commercial distribution without the prior approval of the author.
 
 
 =head1 SEE ALSO

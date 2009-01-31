@@ -26,6 +26,41 @@ use Data::Dumper;
 use POSIX ':signal_h' ;
 use Sys::SigAction qw( set_sig_handler sig_name sig_number );
 
+#from mask.t:
+#see commends in mask.t for concept of this test...
+##summary: the kills in sigHUP are masked, and execute only after 
+#sigHUP finished without interuption
+my $hup = 0;
+my $int = 0;
+my $usr = 0;
+my $cnt = 1;
+sub sigHUP  {
+   ok( ($cnt++ == 1) ,'sigHUP called (1)' );
+   kill INT => $$;
+   kill USR1 => $$;
+   $hup++;
+   sleep 1;
+   ok( ($cnt++==2) ,'sig mask delayed INT and USR1(2)' );
+}
+   
+sub sigINT_1 
+{ 
+   #since USR1 is delayed by mask of USR1 on this Signal handler
+   #
+   ok( ($cnt==3) ,"sigINT_1 called(3) failure: ($cnt!=3) this should have been delayed by mask until sigHUP finished" );
+   $cnt++;
+   $int++; 
+   sleep 1;
+   ok( ($cnt++==4) ,"sig mask delayed USR1 (signaled from sigHUP)(4)" );
+}
+sub sigUSR_1 { 
+   ok( ($cnt==5) ,"sigUSR called (5) failure: ($cnt!=5) it should have been delayed by mask until sigHUP finished)" );
+   $cnt++;
+   $usr++; 
+}
+
+
+#end included functions from mask.t ... 
 
 SKIP: { 
 #   if ($] <5.008) 
@@ -59,22 +94,51 @@ SKIP: {
    }
    else  # ($] >= 5.008002 ) 
    {
-      plan tests => $tests;
+      if ( ! $ENV{SAFE_T} ) #setting safe mode breaks masked signals
+      {
+         plan tests => $tests;
 
-      print STDERR "
-      
-      NOTE: Setting safe=>1... with masked signals does not seem to work.
-      The problem is that the masked signals are not masked, but when
-      safe=>0 they are.  See mask.t for how we could try it.
-
-      If you have an application for safe=>1 and can come up with 
-      a test that works in the context of this module's installation
-      please send me an update. To safe.t that tests it.
-      
-      Lincoln
-      \n";
+         print STDERR "
          
-      ok( 1, "skipping test of safe flag for now" ); 
+         NOTE: Setting safe=>1... with masked signals does not seem to work.
+         The problem is that the masked signals are not masked, but when
+         safe=>0 they are.  
+
+         If you have an application for safe=>1 and can come up with 
+         a test that works in the context of this module's installation
+         please send me a patch to safe.t that tests it.
+         
+         See the block below this one... which if executed would test safe mode
+         with masked signals... it is a clone of part of mask.t that proves this
+         is broken.
+
+         Lincoln
+         \n";
+            
+         ok( 1, "skipping test of safe flag for now" ); 
+      }
+      else 
+      {
+         #including mask.t here testing with masked signals...
+         $tests = 6;
+         plan tests => $tests;
+
+
+         #testing again with safe on
+         #set_sig_handler( 'HUP'  ,\&sigHUP   ,{ flags => SA_RESTART, mask=>[ qw( INT USR1 ) ] , safe=>1 } );
+         #set_sig_handler( 'INT'  ,\&sigINT_1 ,{ flags => SA_RESTART, mask=>[ qw( USR1 )] ,safe=>1 } );
+         #set_sig_handler( 'USR1' ,\&sigUSR_1 ,{ flags => SA_RESTART, safe=>1 } );
+         set_sig_handler( 'HUP'  ,\&sigHUP   ,{ flags => SA_RESTART, mask=>[ qw( INT USR1 ) ] , safe=>1 } );
+         set_sig_handler( 'INT'  ,\&sigINT_1 ,{ flags => SA_RESTART, mask=>[ qw( USR1 )] ,safe=>1 } );
+         set_sig_handler( 'USR1' ,\&sigUSR_1 ,{ flags => SA_RESTART, safe=>1 } );
+         kill HUP => $$;
+         ok( ( $cnt++==6 ), "reached 6th test after first kill" );
+
+#lab      ok( ($hup==1 ), "hup=1 ($hup)" ); 
+#lab      ok( ($int==1 ), "int=1 ($int)" ); 
+#lab      ok( ($usr==1 ), "usr=1 ($usr)" ); 
+
+      }
    }
 }
 

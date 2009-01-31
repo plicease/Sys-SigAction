@@ -1,4 +1,4 @@
-Sys/SigAction version 0.01
+Sys/SigAction version 0.11
 ==========================
 
 Sys::SigAction provides EASY access to POSIX::sigaction() 
@@ -23,8 +23,8 @@ This module requires these other modules and libraries:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2004 Lincoln A. Baxter
+Copyright (c) 2004-2009 Lincoln A. Baxter
 
-This library is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself. 
+You may distribute under the terms of either the GNU General Public
+License or the Artistic License, as specified in the Perl README file,
 
