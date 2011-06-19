@@ -5,9 +5,16 @@
 
 # change 'tests => 1' to 'tests => last_test_to_print';
 
-use Test::More tests => 7;
-BEGIN { use_ok('Sys::SigAction') };
-
+use Test::More;
+BEGIN { 
+   use_ok('Sys::SigAction'); 
+   if ( Sys::SigAction::have_hires() ) 
+   {
+      eval "use Time::HiRes qw( clock_gettime CLOCK_REALTIME ); ";
+   } else {
+      eval "sub CLOCK_REALTIME { 1; } ";
+   }
+}
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
@@ -23,21 +30,22 @@ use POSIX  ':signal_h' ;
 
 sub hash { die { hash=>1 }; }
 sub immediate { die "immediate"; }
-sub forever { while ( 1 ) { 1; } } #read from stdin as a blocking call
+sub forever { while ( 1 ) { 1; } } 
 my $ret = 0;
 
+my $num_tests = 1; #start at 1 because of use_ok above
 eval { 
    $ret = timeout_call( 1, sub { hash(); } ); 
 };
-ok( (ref( $@ ) and exists($@->{'hash'}))  ,'die with hash' );
-ok( $ret == 0 ,'hash did not timeout' );
+ok( (ref( $@ ) and exists($@->{'hash'}))  ,'die with hash' ); $num_tests++;
+ok( $ret == 0 ,'hash did not timeout' ); $num_tests++;
 
 $ret = 0;
 eval { 
    $ret = timeout_call( 1, sub { immediate(); } ); 
 };
-ok( (not ref($@) and $@ ),'immediate -- die with string' );
-ok( $ret == 0 ,'immediate did not timeout' );
+ok( (not ref($@) and $@ ),'immediate -- die with string' ); $num_tests++;
+ok( $ret == 0 ,'immediate did not timeout' ); $num_tests++;
    
 $ret = 0;
 eval { 
@@ -48,9 +56,37 @@ if ( $@ )
 { 
    print "why did forever throw exception:" .Dumper( $@ );
 }
-ok( (not $@ ) ,'forever did NOT die' );
-ok( $ret ,'forever timed out' );
+ok( (not $@ ) ,'forever did NOT die' ); $num_tests++;
+ok( $ret ,'forever timed out' ); $num_tests++;
 
+
+if ( Sys::SigAction::have_hires() )
+{
+   $ret = 0;
+   my $btime;
+   my $etime;
+   eval { 
+      $btime = clock_gettime( CLOCK_REALTIME );
+      $ret = Sys::SigAction::timeout_call( 0.1, \&forever ); 
+   }; 
+   if ( $@ )
+   { 
+      print "hires: why did forever throw exception:" .Dumper( $@ );
+   }
+   $etime =  clock_gettime( CLOCK_REALTIME );
+#   diag(  $btime );
+#   diag(  $etime );
+#   diag(  ($etime-$btime) );
+
+   ok( (not $@ ) ,'hires: forever did NOT die' ); $num_tests++;
+   ok( $ret ,'hires: forever timed out' ); $num_tests++;
+   ok( (($etime - $btime) < 0.2 ), "hires: timeout in < 0.2 seconds" ); $num_tests++;
+}
+else
+{
+   diag "fractional second timeout test skipped: Time::HiRes is not installed" ;
+}
+plan tests => $num_tests;
 
 #foreach my $level ( @levels )
 #{

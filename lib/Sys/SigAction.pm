@@ -8,15 +8,45 @@ package Sys::SigAction;
 require 5.005;
 use strict;
 #use warnings;
-use POSIX ':signal_h' ;
+use POSIX qw( :signal_h ceil ) ;
 require Exporter;
 use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
+
+#support high resolution time transparently in timeout_call by defining
+#the function sig_alarm() which calls ualarm if Time::HiRes
+#is load able or alarm with the ciel of the value passed if
+#Time::HiRes is not loadable. 
+#timeout_call uses sig_alarm()
+my $have_hires = 1; 
+{
+   eval "use Time::HiRes qw( ualarm )";
+   if ( $@ ) {
+      $have_hires = 0;
+   }
+}
+sub have_hires() { return $have_hires; }; #test support
+
+sub sig_alarm #replacement for alarm, takes factional seconds in floating point format
+{
+   my ( $secs ) = @_;
+   #print  print "secs=$secs\n";
+   if ( $have_hires )
+   {
+      $secs = $secs * 1000000.0;
+      #print "have hires: secs modified to $secs\n";
+      ualarm( $secs );
+   }
+   else
+   {
+      alarm( ceil( $secs ) );
+   }
+}
 
 #use Data::Dumper;
 
 @ISA = qw( Exporter );
-@EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number );
-$VERSION = '0.11';
+@EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
+$VERSION = '0.12';
 
 use Config;
 my %signame = ();
@@ -142,11 +172,15 @@ sub timeout_call( $$;$ )
    eval {
       #lab-20060625 unecessary: my $h = sub { $timed_out = 1; die TIMEDOUT; };
       my $sa = set_sig_handler( SIGALRM ,sub { $timed_out = 1; die TIMEDOUT; } );
-      alarm( $timeout );
-      &$code; 
-      alarm(0);
+      eval {
+         #print "timeout=$timeout\n" ;
+         sig_alarm( $timeout );
+         &$code; 
+         sig_alarm(0);
+      };
+      sig_alarm(0);
+      die $@ if $@;
    };
-   alarm(0);
    if ($@)
    {
       #print "$@\n" ;
@@ -196,11 +230,14 @@ or
    use Sys::SigAction qw( set_sig_handler );
    eval {
       my $h = set_sig_handler( 'ALRM' ,\&mysubname ,{ mask=>[ 'ALRM' ] ,safe=>1 } );
-      alarm(2)
-      ... do something you want to timeout
-      alarm(0);
+      eval {
+         alarm(2)
+         ... do something you want to timeout
+         alarm(0);
+      };
+      alarm(0); 
+      die $@ if $@;
    }; #signal handler is reset when $h goes out of scope
-   alarm(0); 
    if ( $@ ) ...
 
 or
@@ -209,10 +246,14 @@ or
    my $alarm = 0;
    eval {
       my $h = Sys::SigAction::set_sig_handler( 'ALRM' ,sub { $alarm = 1; } );
-      alarm(2)
-      ... do something you want to timeout
-      alarm(0);
-   };
+      eval {
+         alarm(2)
+         ... do something you want to timeout
+         alarm(0);
+      };
+      alarm(0); 
+      die $@ if $@;
+   }; #signal handler is reset when $h goes out of scope
    alarm(0); 
    if ( $@ or $alarm ) ...
 
@@ -231,6 +272,15 @@ or
       print "DoSomething() timed out\n" ;
    }
 
+or
+
+   #use a floating point (fractional seconds) in timeout_call
+   use Sys::SigAction qw( timeout_call );
+   if ( timeout_call( 0.1 ,sub { $retval = DoSomething( @args ); } )
+   {
+      print "DoSomething() timed out\n" ;
+   }
+
 =head1 ABSTRACT
 
 This module implements C<set_sig_handler()>, which sets up a signal
@@ -239,7 +289,10 @@ handler to be reset to the previous value, when it goes out of scope.
 
 Also implemented is C<timeout_call()> which takes a timeout value and
 a code reference, and executes the code reference wrapped with an
-alarm timeout.
+alarm timeout. timeout_call accepts seconds in floating point format,
+so you can time out call with a resolution of 0.000001 seconds (assumes 
+Time::HiRes is loadable.
+ 
 
 Finally, two convenience routines are defined which allow one to get the
 signal name from the number -- C<sig_name()>, and get the signal number
@@ -282,7 +335,7 @@ Thus the 'deferred signal' approach (as implemented by default in
 perl 5.8 and later) results in some system calls being
 retried prior to the signal handler being called by perl. 
 This breaks timeout logic for DBD-Oracle which works with
-earlier versions of perl.  This can be particularly vexing,
+earlier versions of perl.  This can be particularly vexing, when, for instance,
 the host on which a database resides is not available:  C<DBI-E<gt>connect()>
 hangs for minutes before returning an error (and cannot even be interupted
 with control-C, even when the intended timeout is only seconds). 
@@ -298,6 +351,21 @@ that looks like this in perl 5.8.0 and later:
    };
    alarm 0;
    die if $@;
+
+Or as the author of bug #50628 pointed out, 
+might probably better be written as:
+
+   eval {
+      local $SIG{ALRM} = sub { die "timeout" };
+      eval {
+         alarm 2;
+         $sth = DBI->connect(...);
+         alarm 0;
+      };
+   }
+   alarm 0;
+   die if $@;
+
 
 The solution, if your system has the POSIX sigaction() function,
 is to use perl's C<POSIX::sigaction()> to install the signal handler.
@@ -355,6 +423,21 @@ It is hoped that with the use of this module, your signal handling
 behavior can be coded in a way that does not change from one perl version
 to the next, and that sigaction() will be easier for you to use.
 
+=head1 Note on "Double evals"
+
+CPAN bug #50628 which was filed against Sys::SigAction-0.11
+noting that the sample code was "buggy" because the evals 
+that wrapped the code we wanted to timeout
+might die for an unanticipated reason, before the alarm could be cleared.
+In that case, as the bug writer noted, if the alarm expires before the final alarm(0)
+can be called, either the code will completely die because
+there is no SIGALRM handler in place to catch the signal, or the
+wrong handler (not the local handler) will be called. 
+
+All the code samples in this module have been modified to account for this.  
+Additionally we have made the same change in timeout_call() which could
+have exhibited this behavior, though the AUTHOR never knowing experienced it.
+
 =head1 FUNCTIONS
 
 =head2  set_sig_handler() 
@@ -398,7 +481,12 @@ which will be restored on object destruction.
 
 Given a code reference, and a timeout value (in seconds), timeout()
 will (in an eval) setup a signal handler for SIGALRM (which will die),
-set an alarm clock, and execute the code reference.
+set an alarm clock, and execute the code reference. $time (seconds) may 
+be expressed as a floating point number. 
+
+If Time::HiRes is present and useable, timeout_call() can be used with a
+timer resolution of 0.000001 seconds.  If Time:HiRes is not available then factional
+second values less than 1.0 are tranparently converted to 1.
 
 If the alarm goes off the code will be interupted.  The alarm is
 canceled if the code returns before the alarm is fired.  The routine
@@ -406,6 +494,21 @@ returns true if the code being executed timed out. (was interrupted).
 Exceptions thrown by the code executed are propagated out.
 
 The original signal handler is restored, prior to returning to the caller.
+
+If HiRes is not loadable, Sys::SigAction will do the right thing
+and convert 
+
+=head2 sig_alarm()
+
+   $seconds 
+
+sig_alarm() is a drop in replacment for the standard alarm() function.
+$seconds may be expressed as a floating point number. 
+
+If Time::HiRes is present and useable, the alarm timers will be set
+to the floating point value with a resolution of 0.000001 seconds.  
+If Time::HiRes is not available then $seconds with values less than 
+1.0 will be converted to 1 second.
 
 =head2 sig_name()
 

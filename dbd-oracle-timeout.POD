@@ -72,11 +72,14 @@ Here is how we handled this situation in perls earlier than 5.8.x:
 
    eval {
       local $SIG{ALRM} = sub { die "open timed out"; };
-      alarm(2); #implement 2 second time out
-      $dbh = DBI->connect("dbi:Oracle:$dbn" ... );
+      eval {
+         alarm(2); #implement 2 second time out
+         $dbh = DBI->connect("dbi:Oracle:$dbn" ... );
+         alarm(0);
+      };
       alarm(0);
+      die $@ if $@;
    };
-   alarm(0);
    if ( $@ ) { print "connection to $dbn timed out\n" ; }
 
 Because C<$SIG{ALRM}> has been 'localized', this code restores the 
@@ -93,17 +96,34 @@ above:
 
    eval {
       local $SIG{ALRM} = sub { $sth->cancel(); };
-      alarm(2); #implement 2 second time out
-      $sth->execute( ... );
+      eval {
+         alarm(2); #implement 2 second time out
+         $sth->execute( ... );
+         alarm(0);
+      };
       alarm(0);
+      die $@ if $@;
    };
-   alarm(0);
    if ( $@ ) { print "execute timed out\n" }
 
 Again, perl restores the original C<$SIG{ALRM}> handler when the eval
 block is exited.
 
 =back
+
+=head2 Note on eval of eval
+
+The reader might note that the "double evals" in the code samples above.
+CPAN bug #50628 was filed against Sys::SigAction noting that the sample code
+was "buggy" because the evals that wrapped the code we wanted to timeout
+might die for an unanticipated reason, before the alarm could be cleared.
+In that case, if the alarm expires before the final alarm(0)
+can be called, either the code will completely die because
+there is no SIGALRM handler in place to catch the signal, or the
+wrong handler (not the local handler) will be called. 
+
+All the code sames here have been adjusted to execute the code to be
+timed out in an inner eval to correct for this problem.
 
 =head2 The Problem
 
@@ -182,19 +202,22 @@ connect() case):
 
    use POSIX ':signal_h';
 
-   my $mask = POSIX::SigSet->new( SIGALRM ); #list of signals to mask in the handler
-   my $action = POSIX::SigAction->new( 
-       sub { die "connect failed" ; } #the handler code ref
-      ,$mask ); #assumes we're not using an specific flags or 'safe' switch
-   my $oldaction = POSIX::SigAction->new();
-   sigaction( 'ALRM' ,$action ,$oldaction );
    eval {
-      alarm(2); #implement 2 second time out
-      $dbh = DBI->connect("dbi:Oracle:$dbn" ... );
+      my $mask = POSIX::SigSet->new( SIGALRM ); #list of signals to mask in the handler
+      my $action = POSIX::SigAction->new( 
+          sub { die "connect failed" ; } #the handler code ref
+         ,$mask ); #assumes we're not using an specific flags or 'safe' switch
+      my $oldaction = POSIX::SigAction->new();
+      sigaction( 'ALRM' ,$action ,$oldaction );
+      eval {
+         alarm(2); #implement 2 second time out
+         $dbh = DBI->connect("dbi:Oracle:$dbn" ... );
+         alarm(0);
+      };
       alarm(0);
+      sigaction( 'ALRM' ,$oldaction ); #restore original signal handler
+      die $@ if $@;
    };
-   alarm(0);
-   sigaction( 'ALRM' ,$oldaction ); #restore original signal handler
    if ( $@ ) ....
 
 This is not a pretty replacement for what was a single line of
@@ -221,11 +244,14 @@ So the above code is rewritten as follows:
 
    eval {
       my $h = set_sig_handler( 'ALRM' ,sub { die "connect failed" ; } );
-      alarm(2); #implement 2 second time out
-      $dbh = DBI->connect("dbi:Oracle:$dbn" ... );
+      eval {
+         alarm(2); #implement 2 second time out
+         $dbh = DBI->connect("dbi:Oracle:$dbn" ... );
+         alarm(0);
+      };
       alarm(0);
+      die $@ if $@;
    }; #original signal handler restored here when $h goes out of scope
-   alarm(0);
    if ( $@ ) ....
 
 And the nice thing about using C<Sys::SigAction>, is that it works with
@@ -335,14 +361,17 @@ was fixed with version 0.06 this script had to be fixed.
          };
          #note that if you ask for safe, it will not work...
          my $h = set_sig_handler( 'ALRM' ,$code ,{ flags=>0 ,safe=>0 } ); 
-         alarm(1);
-         print "opening testdbfail (missing host test)\n" ;
-         $dbh = DBI->connect("dbi:Oracle:testdbfail" ,"na" ,"na" );
+         eval {
+            alarm(1);
+            print "opening testdbfail (missing host test)\n" ;
+            $dbh = DBI->connect("dbi:Oracle:testdbfail" ,"na" ,"na" );
+            alarm(0);
+            print "connect failed!\n" if not $dbh;
+            ok( 0 ,"after missing_host connect... how did we get here?\n" );
+         };
          alarm(0);
-         print "connect failed!\n" if not $dbh;
-         ok( 0 ,"after missing_host connect... how did we get here?\n" );
+         die $@ if $@;
       };
-      alarm(0);
       if ( $@ )
       {
          ok( 1 ,"exception: $@" );
@@ -382,14 +411,17 @@ was fixed with version 0.06 this script had to be fixed.
                                         }
                                  ,{ mask=>[ qw( INT ALRM ) ] ,safe => 0 } 
                                  );
-         my $timeout =1;
-         print "\ncalling execute with $timeout second timeout\n" ;
-         alarm($timeout);
-         $sth->execute();
+         eval {
+            my $timeout = 1;
+            print "\ncalling execute with $timeout second timeout\n" ;
+            alarm($timeout);
+            $sth->execute();
+            alarm(0);
+            ok( 0 ,"after execute of infinite statement (how did we get here?)\n" );
+         };
          alarm(0);
-         ok( 0 ,"after execute of infinite statement (how did we get here?)\n" );
+         die $@ if $@;
       };
-      alarm(0);
       if ( $@ )
       {
          print $@ if not $@ =~ m/DBD::Oracle/;

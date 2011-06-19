@@ -34,16 +34,17 @@ if ( ! $@ || $Config{usethreads} || $Config{useithreads} || $Config{use5005threa
    Using Signals in a multi-thread perl application is unsupported 
    by Sys::SigAction.
 
-   Sys::SigAction is not Supported on multi-threaded perls.
-
    Read the following from perldoc perlthrtut:
 
-      ...mixing signals and threads should not be attempted.  
-      Implementations are platform-dependent, and even the 
-      POSIX semantics may not be what you expect (and Perl
-      doesn't even give you the full POSIX API).
+      ...mixing signals and threads may be problematic.
+      Implementations are platform-dependent, and even the POSIX semantics
+      may not be what you expect (and Perl doesn't even give you the full
+      POSIX API).  For example, there is no way to guarantee that a signal
+      sent to a multi-threaded Perl application will get intercepted by
+      any particular thread.
+      
 
-   You are on your own...
+   You are on your own if we use this module in a multi threaded application
 
    Lincoln
 
@@ -90,14 +91,21 @@ if ( $Config{archname} =~ m/armv5tejl/ ) {
 }
 
 #ok... enough defensiveness... 
-WriteMakefile(
+my $args = {
     'NAME'		=> 'Sys::SigAction',
     'VERSION_FROM'	=> 'lib/Sys/SigAction.pm', # finds $VERSION
     'PREREQ_PM'		=> {
        'Test::More'  =>  0
        ,POSIX => 0 
     }, # e.g., Module::Name => 1.1
-    ABSTRACT_FROM => 'lib/Sys/SigAction.pm', # retrieve abstract from module
-    AUTHOR     => 'Lincoln A. Baxter <lab-at-lincolnbaxter-dot-com>' 
-);
+    'ABSTRACT_FROM' => 'lib/Sys/SigAction.pm', # retrieve abstract from module
+    'AUTHOR'     => 'Lincoln A. Baxter <lab-at-lincolnbaxter-dot-com>' 
+};
+
+print "MakeMaker version = $ExtUtils::MakeMaker::VERSION\n";
+if ($ExtUtils::MakeMaker::VERSION >= 6.3002 ) {
+   $args->{LICENSE} = 'perl';
+}
+
+WriteMakefile( %$args );
 

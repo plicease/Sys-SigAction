@@ -8,6 +8,40 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.12  2 Jun 2011
+
+Conditionally add 'LICENSE' => 'perl' to WriteMakefile()
+call if $ExtUtils::MakeMaker::VERSION >= 6.3002.
+
+Added support for timeout_call() in fractional seconds
+expressed as a floating point number.  If Time::HiRes
+is not loadable, then the timeout value is raised to the
+next high integer value with the POSIX:ceil() funtion.
+
+Added sig_alarm(), which timeout_call uses. This is drop
+in replacement for alarm(). If Time::HiRes
+is not loadable, then the seconds argument is raised to the
+next high integer value with the POSIX:ceil() funtion.
+
+Update sample code to use double evals in response 
+
+   https://rt.cpan.org/Public/Bug/Display.html?id=50628
+
+The bug author wrote: 
+
+   Suppose the eval dies for some reason unrelated to the signal handling
+   just before the alarm expires, and then the code exits the eval, and
+   then the alarm expires before the final alarm(0) can be called. Now
+   either the code will completely die because there is no SIGALRM
+   handler in place to catch the signal, or the wrong handler (not the
+   local handler) will be called.
+
+Make the same change in timeout_call().  The change traps the 
+remote possibility that an alarm signal could arrive 
+between the time code dies (for some unrelated reason) and the 
+final eval is called or called.
+
+
 =head2 Changes in Sys::SigAction 0.11  31 Jan 2009
 
 Remove Restriction in License which required permission 
