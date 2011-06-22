@@ -12,7 +12,7 @@ BEGIN {
    {
       eval "use Time::HiRes qw( clock_gettime CLOCK_REALTIME ); ";
    } else {
-      eval "sub CLOCK_REALTIME { 1; } ";
+      eval "use constant CLOCK_REALTIME => 1;"; #get it defined
    }
 }
 #########################
@@ -20,7 +20,7 @@ BEGIN {
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
-use strict;
+#use strict;
 #use warnings;
 
 use Carp qw( carp cluck croak confess );

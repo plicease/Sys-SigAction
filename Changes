@@ -8,7 +8,15 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
-=head2 Changes in Sys::SigAction 0.12  2 Jun 2011
+=head2 Changes in Sys::SigAction 0.12  22 Jun 2011
+
+Fix strict undefined symbol error in timeout.t, when Time::HiRes is not present.
+Not sure if constant pragma will exist in all supported perl versions,
+so, we just commented out the use strict in this test.
+
+Print warning when Time::HiRes not found in Makefile.PL
+
+=head2 Changes in Sys::SigAction 0.12  20 Jun 2011
 
 Conditionally add 'LICENSE' => 'perl' to WriteMakefile()
 call if $ExtUtils::MakeMaker::VERSION >= 6.3002.
@@ -143,7 +151,7 @@ to read from STDIN, which apparently does not block or immediately
 returns an error on some platforms or test environments
 
 Lincoln A Baxter
-
+ck 
 =head2 Changes in Sys::SigAction 0.03  4 April 2004
 
 Skip attrs.t test if perl version < 5.8.2 (rt.cpan.org ticket #5948)

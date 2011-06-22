@@ -86,9 +86,21 @@ if ( $Config{archname} =~ m/armv5tejl/ ) {
    it supported by fixing the perl port, you can uncomment out
    this section of Makefile.PL to build Sys::SigAction.
 
-   Lincoln
    };
 }
+
+print "Checking for Time::HiRes (support for fractional seconds in timeouts)\n";
+eval "use Time::HiRes qw( ualarm )";
+if ( $@ ) {
+   warn q(
+   
+   Time::HiRes is not available.  Fractional seconds in timeout_call()
+   will be raised to the next high integer value with POSIX::ceil().
+   
+   );
+}
+
+
 
 #ok... enough defensiveness... 
 my $args = {
