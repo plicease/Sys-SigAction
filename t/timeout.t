@@ -6,13 +6,13 @@
 # change 'tests => 1' to 'tests => last_test_to_print';
 
 use Test::More;
+my $do_subsec = 0;
+
 BEGIN { 
    use_ok('Sys::SigAction'); 
    if ( Sys::SigAction::have_hires() ) 
    {
-      eval "use Time::HiRes qw( clock_gettime CLOCK_REALTIME ); ";
-   } else {
-      eval "use constant CLOCK_REALTIME => 1;"; #get it defined
+      eval "use Time::HiRes qw( time );";
    }
 }
 #########################
@@ -20,7 +20,7 @@ BEGIN {
 # Insert your test code below, the Test::More module is use()ed here so read
 # its man page ( perldoc Test::More ) for help writing this test script.
 
-#use strict;
+use strict;
 #use warnings;
 
 use Carp qw( carp cluck croak confess );
@@ -62,18 +62,19 @@ ok( $ret ,'forever timed out' ); $num_tests++;
 
 if ( Sys::SigAction::have_hires() )
 {
+   diag( "testing fractional second timeout" );
    $ret = 0;
    my $btime;
    my $etime;
    eval { 
-      $btime = clock_gettime( CLOCK_REALTIME );
+      $btime = time();
       $ret = Sys::SigAction::timeout_call( 0.1, \&forever ); 
    }; 
    if ( $@ )
    { 
       print "hires: why did forever throw exception:" .Dumper( $@ );
    }
-   $etime =  clock_gettime( CLOCK_REALTIME );
+   $etime =  time();
 #   diag(  $btime );
 #   diag(  $etime );
 #   diag(  ($etime-$btime) );

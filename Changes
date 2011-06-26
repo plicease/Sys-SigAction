@@ -8,8 +8,15 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
-=head2 Changes in Sys::SigAction 0.12  22 Jun 2011
+=head2 Changes in Sys::SigAction 0.14  26 Jun 2011
 
+Additional fix for timeout.t on darwin OSes: Use Time::HiRes::time() instead of 
+Time:HiRes::clock_gettimeofday(). Should have been done this way in the first place.
+Put "use strict" back. 
+
+=head2 Changes in Sys::SigAction 0.13  23 Jun 2011
+
+No functional changes. Fix for test timeout.t.
 Fix strict undefined symbol error in timeout.t, when Time::HiRes is not present.
 Not sure if constant pragma will exist in all supported perl versions,
 so, we just commented out the use strict in this test.
