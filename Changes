@@ -8,11 +8,9 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
-=head2 Changes in Sys::SigAction 0.14  26 Jun 2011
+=head2 Changes in Sys::SigAction 0.15  1 Jul 2011
 
-Additional fix for timeout.t on darwin OSes: Use Time::HiRes::time() instead of 
-Time:HiRes::clock_gettimeofday(). Should have been done this way in the first place.
-Put "use strict" back. 
+Clean up POD. Close bug #69057. Other minor tweaks to POD.
 
 =head2 Changes in Sys::SigAction 0.13  23 Jun 2011
 

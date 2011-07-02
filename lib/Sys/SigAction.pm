@@ -46,7 +46,7 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.14';
+$VERSION = '0.15';
 
 use Config;
 my %signame = ();
@@ -217,11 +217,11 @@ Sys::SigAction - Perl extension for Consistent Signal Handling
 
 =head1 SYNOPSYS
 
-   #do something non-interupt able
+   #do something non-interrupt able
    use Sys::SigAction qw( set_sig_handler );
    {
       my $h = set_sig_handler( 'INT' ,'mysubname' ,{ flags => SA_RESTART } );
-      ... do stuff non-interupt able
+      ... do stuff non-interrupt able
    } #signal handler is reset when $h goes out of scope
 
 or
@@ -313,7 +313,7 @@ on platforms which support the POSIX sigaction() function.  This is
 accomplished by having perl note that a signal has arrived, but deferring
 the execution of the signal handler until such time as it is safe to do
 so.  Unfortunately these changes can break some existing scripts, if they
-depended on a system routine being interupted by the signal's arrival.
+depended on a system routine being interrupted by the signal's arrival.
 The perl 5.8.0 implementation was modified further in version 5.8.2.
 
 From the perl 5.8.2 B<perlvar> man page:
@@ -337,7 +337,7 @@ retried prior to the signal handler being called by perl.
 This breaks timeout logic for DBD-Oracle which works with
 earlier versions of perl.  This can be particularly vexing, when, for instance,
 the host on which a database resides is not available:  C<DBI-E<gt>connect()>
-hangs for minutes before returning an error (and cannot even be interupted
+hangs for minutes before returning an error (and cannot even be interrupted
 with control-C, even when the intended timeout is only seconds). 
 This is because SIGINT appears to be deferred as well.  The
 result is that it is impossible to implement open timeouts with code
@@ -488,7 +488,7 @@ If Time::HiRes is present and useable, timeout_call() can be used with a
 timer resolution of 0.000001 seconds.  If Time:HiRes is not available then factional
 second values less than 1.0 are tranparently converted to 1.
 
-If the alarm goes off the code will be interupted.  The alarm is
+If the alarm goes off the code will be interrupted.  The alarm is
 canceled if the code returns before the alarm is fired.  The routine
 returns true if the code being executed timed out. (was interrupted).
 Exceptions thrown by the code executed are propagated out.
@@ -500,15 +500,17 @@ and convert
 
 =head2 sig_alarm()
 
-   $seconds 
+ex:
+
+   sig_alarm( 1.2 ); 
 
 sig_alarm() is a drop in replacment for the standard alarm() function.
-$seconds may be expressed as a floating point number. 
+The argument may be expressed as a floating point number. 
 
 If Time::HiRes is present and useable, the alarm timers will be set
 to the floating point value with a resolution of 0.000001 seconds.  
-If Time::HiRes is not available then $seconds with values less than 
-1.0 will be converted to 1 second.
+If Time::HiRes is not available then the a fractional value in the argument will 
+be raised to the next higher integer value. 
 
 =head2 sig_name()
 
