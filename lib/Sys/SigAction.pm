@@ -14,7 +14,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 #support high resolution time transparently in timeout_call by defining
 #the function sig_alarm() which calls ualarm if Time::HiRes
-#is load able or alarm with the ciel of the value passed if
+#is load able or alarm with the ceil of the value passed if
 #Time::HiRes is not loadable. 
 #timeout_call uses sig_alarm()
 my $have_hires = 1; 
@@ -46,7 +46,7 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.15';
+$VERSION = '0.16';
 
 use Config;
 my %signame = ();
@@ -164,29 +164,27 @@ sub set_sigaction($$)
 }
 
 use constant TIMEDOUT => {};
-sub timeout_call( $$;$ )
+sub timeout_call( $$@ )
 {
-   my ( $timeout ,$code ) = @_;
+   my ( $timeout, $code, @args ) = @_;
+
+   if (!$timeout) {
+      &$code(@args);
+      return 0;
+   }
+
    my $timed_out = 0;
-   my $ex;
    eval {
-      #lab-20060625 unecessary: my $h = sub { $timed_out = 1; die TIMEDOUT; };
       my $sa = set_sig_handler( SIGALRM ,sub { $timed_out = 1; die TIMEDOUT; } );
       eval {
-         #print "timeout=$timeout\n" ;
          sig_alarm( $timeout );
-         &$code; 
-         sig_alarm(0);
+         &$code(@args); 
       };
       sig_alarm(0);
       die $@ if $@;
    };
-   if ($@)
-   {
-      #print "$@\n" ;
-      die $@ if not ref $@;
-      die $@ if $@ != TIMEDOUT;
-   }
+   die $@ if $@ and (not ref $@ or $@ != TIMEDOUT);
+
    return $timed_out;
 }
 sub new {
@@ -287,11 +285,11 @@ This module implements C<set_sig_handler()>, which sets up a signal
 handler and (optionally) returns an object which causes the signal
 handler to be reset to the previous value, when it goes out of scope.
 
-Also implemented is C<timeout_call()> which takes a timeout value and
-a code reference, and executes the code reference wrapped with an
-alarm timeout. timeout_call accepts seconds in floating point format,
-so you can time out call with a resolution of 0.000001 seconds (assumes 
-Time::HiRes is loadable.
+Also implemented is C<timeout_call()> which takes a timeout value, a
+code reference and optional arguments, and executes the code reference
+wrapped with an alarm timeout. timeout_call accepts seconds in floating
+point format, so you can time out call with a resolution of 0.000001
+seconds (assumes Time::HiRes is loadable).
  
 
 Finally, two convenience routines are defined which allow one to get the
@@ -477,16 +475,20 @@ which will be restored on object destruction.
 
 =head2 timeout_call()
 
-   $timeout ,$coderef 
+   $timeout, $coderef, @args
 
-Given a code reference, and a timeout value (in seconds), timeout()
+Given a code reference, and a timeout value (in seconds), timeout_call()
 will (in an eval) setup a signal handler for SIGALRM (which will die),
-set an alarm clock, and execute the code reference. $time (seconds) may 
-be expressed as a floating point number. 
+set an alarm clock, and execute the code reference with optional
+arguments @args. $timeout (seconds) may be expressed as a floating point
+number. 
+
 
 If Time::HiRes is present and useable, timeout_call() can be used with a
-timer resolution of 0.000001 seconds.  If Time:HiRes is not available then factional
-second values less than 1.0 are tranparently converted to 1.
+timer resolution of 0.000001 seconds. If HiRes is not loadable, 
+Sys::SigAction will "do the right thing" and convert the factional 
+seconds to the next higher integer value using the posix ceil() function.
+
 
 If the alarm goes off the code will be interrupted.  The alarm is
 canceled if the code returns before the alarm is fired.  The routine
@@ -494,9 +496,6 @@ returns true if the code being executed timed out. (was interrupted).
 Exceptions thrown by the code executed are propagated out.
 
 The original signal handler is restored, prior to returning to the caller.
-
-If HiRes is not loadable, Sys::SigAction will do the right thing
-and convert 
 
 =head2 sig_alarm()
 

@@ -8,6 +8,15 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.16  21 Jul 2013
+
+Thanks to excellent patches from Carsten Gaebler (contact me
+if you want to contact him), timeout_call() now supports
+passing an array of arguments which it will pass to the code
+it executes.
+
+Minor tweak to POD.
+
 =head2 Changes in Sys::SigAction 0.15  1 Jul 2011
 
 Clean up POD. Close bug #69057. Other minor tweaks to POD.

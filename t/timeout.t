@@ -28,21 +28,29 @@ use Data::Dumper;
 use Sys::SigAction qw( set_sig_handler timeout_call );
 use POSIX  ':signal_h' ;
 
+my $num_args_seen;
+my $sum_args_seen;
+
 sub hash { die { hash=>1 }; }
 sub immediate { die "immediate"; }
-sub forever { while ( 1 ) { 1; } } 
+sub forever { select undef, undef, undef, undef } 
+sub forever_w_args {
+   $num_args_seen = @_;
+   $sum_args_seen += $_ for @_;
+   forever();
+}
 my $ret = 0;
 
 my $num_tests = 1; #start at 1 because of use_ok above
 eval { 
-   $ret = timeout_call( 1, sub { hash(); } ); 
+   $ret = timeout_call( 1, \&hash ); 
 };
 ok( (ref( $@ ) and exists($@->{'hash'}))  ,'die with hash' ); $num_tests++;
 ok( $ret == 0 ,'hash did not timeout' ); $num_tests++;
 
 $ret = 0;
 eval { 
-   $ret = timeout_call( 1, sub { immediate(); } ); 
+   $ret = timeout_call( 1, \&immediate ); 
 };
 ok( (not ref($@) and $@ ),'immediate -- die with string' ); $num_tests++;
 ok( $ret == 0 ,'immediate did not timeout' ); $num_tests++;
@@ -59,6 +67,21 @@ if ( $@ )
 ok( (not $@ ) ,'forever did NOT die' ); $num_tests++;
 ok( $ret ,'forever timed out' ); $num_tests++;
 
+foreach my $args ([1], [2, 3]) {
+   $ret = 0;
+   my $num_args_ok = @$args;
+   my $sum_args_ok = 0;
+   $sum_args_ok += $_ for @$args;
+   $num_args_seen = $sum_args_seen = 0;
+   eval {
+      $ret = Sys::SigAction::timeout_call( 1, \&forever_w_args, @$args );
+   };
+   local $" = ', ';
+   ok( (not $@ ) ,"forever_w_args(@$args) did NOT die" ); $num_tests++;
+   ok( $ret ,"forever_w_args(@$args) timed out" ); $num_tests++;
+   ok( $num_args_seen == $num_args_ok,"forever_w_args(@$args) got $num_args_seen args" ); $num_tests++;
+   ok( $sum_args_seen == $sum_args_ok,"forever_w_args(@$args) args sum is $sum_args_seen" ); $num_tests++;
+}
 
 if ( Sys::SigAction::have_hires() )
 {
