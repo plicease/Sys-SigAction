@@ -30,11 +30,18 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
 {
    my ( $secs ) = @_;
    #print  print "secs=$secs\n";
+  
    if ( $have_hires )
    {
-      $secs = $secs * 1000000.0;
-      #print "have hires: secs modified to $secs\n";
-      ualarm( $secs );
+      if ( $secs*1_000_000.0 > POSIX::INT_MAX)  
+      {
+         alarm( $secs );
+      }
+      else
+      {
+         $secs = $secs * 1_000_000.0;
+         ualarm( $secs );
+      }
    }
    else
    {
@@ -46,7 +53,7 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.16';
+$VERSION = '0.17';
 
 use Config;
 my %signame = ();
@@ -87,7 +94,7 @@ sub _attrs_warning($)
    my ( $attrs ) =  @_ ;
    #my $act =  POSIX::SigAction->new( $handler ,$mask ,$attrs->{flags} ,$attrs->{safe} );
    #steve ( SPURKIS@cpan.org submitted  http://rt.cpan.org/Ticket/Display.html?id=19916 
-   #  puts out the above liin is a mis-interpretation of the API for POSIX::SigAcation
+   #  puts out the above line is a mis-interpretation of the API for POSIX::SigAcation
    #  so here is the fix (per his suggestion)... lab:
    #
    #http://rt.cpan.org/Public/Bug/Display.html?id=21777
@@ -252,7 +259,6 @@ or
       alarm(0); 
       die $@ if $@;
    }; #signal handler is reset when $h goes out of scope
-   alarm(0); 
    if ( $@ or $alarm ) ...
 
 or
@@ -342,13 +348,15 @@ result is that it is impossible to implement open timeouts with code
 that looks like this in perl 5.8.0 and later:
 
    eval {
-      local $SIG{ALRM} = sub { die "timeout" };
-      alarm 2;
-      $sth = DBI->connect(...);
+      eval {
+         local $SIG{ALRM} = sub { die "timeout" };
+         alarm 2;
+         $sth = DBI->connect(...);
+         alarm 0;
+      };
       alarm 0;
+      die if $@;
    };
-   alarm 0;
-   die if $@;
 
 Or as the author of bug #50628 pointed out, 
 might probably better be written as:
@@ -360,9 +368,9 @@ might probably better be written as:
          $sth = DBI->connect(...);
          alarm 0;
       };
-   }
-   alarm 0;
-   die if $@;
+      alarm 0;
+      die if $@;
+   };
 
 
 The solution, if your system has the POSIX sigaction() function,
@@ -503,7 +511,7 @@ ex:
 
    sig_alarm( 1.2 ); 
 
-sig_alarm() is a drop in replacment for the standard alarm() function.
+sig_alarm() is a drop in replacement for the standard alarm() function.
 The argument may be expressed as a floating point number. 
 
 If Time::HiRes is present and useable, the alarm timers will be set

@@ -26,14 +26,15 @@ use strict;
 use Carp qw( carp cluck croak confess );
 use Data::Dumper;
 use Sys::SigAction qw( set_sig_handler timeout_call );
-use POSIX  ':signal_h' ;
+use POSIX  qw( pause :signal_h );
 
 my $num_args_seen;
 my $sum_args_seen;
 
 sub hash { die { hash=>1 }; }
+sub sleep_one { sleep 1; die "sleep_one"; }
 sub immediate { die "immediate"; }
-sub forever { select undef, undef, undef, undef } 
+sub forever { pause; } 
 sub forever_w_args {
    $num_args_seen = @_;
    $sum_args_seen += $_ for @_;
@@ -54,7 +55,7 @@ eval {
 };
 ok( (not ref($@) and $@ ),'immediate -- die with string' ); $num_tests++;
 ok( $ret == 0 ,'immediate did not timeout' ); $num_tests++;
-   
+
 $ret = 0;
 eval { 
    $ret = Sys::SigAction::timeout_call( 1, \&forever ); 
@@ -85,7 +86,7 @@ foreach my $args ([1], [2, 3]) {
 
 if ( Sys::SigAction::have_hires() )
 {
-   diag( "testing fractional second timeout" );
+   diag( "fractional second timeout tests" );
    $ret = 0;
    my $btime;
    my $etime;
@@ -98,26 +99,25 @@ if ( Sys::SigAction::have_hires() )
       print "hires: why did forever throw exception:" .Dumper( $@ );
    }
    $etime =  time();
-#   diag(  $btime );
-#   diag(  $etime );
-#   diag(  ($etime-$btime) );
 
    ok( (not $@ ) ,'hires: forever did NOT die' ); $num_tests++;
    ok( $ret ,'hires: forever timed out' ); $num_tests++;
    ok( (($etime - $btime) < 0.2 ), "hires: timeout in < 0.2 seconds" ); $num_tests++;
+
+   #diag( "testing HiRes where msecs would be greater than maxint (" .POSIX::INT_MAX.")" );
+   my $toobig = POSIX::INT_MAX/1_000_000.0 + 1;
+   $ret = 0;
+   eval { 
+      $ret = timeout_call( $toobig, \&sleep_one ); 
+   };
+   ok( (not ref($@) and $@ ),"immediate -- die with string (toobig=$toobig)" ); $num_tests++;
+   ok( $ret == 0 ,"immediate did not timeout (with toobig=$toobig)" ); $num_tests++;
+
 }
 else
 {
    diag "fractional second timeout test skipped: Time::HiRes is not installed" ;
 }
 plan tests => $num_tests;
-
-#foreach my $level ( @levels )
-#{
-#   ok( $level ,"level $i" );
-#   print "level $i = $level\n" ;
-#   $i++;
-#}
-
 
 exit;

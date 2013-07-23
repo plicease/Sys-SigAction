@@ -10,6 +10,28 @@ Revision history for Sys::SigAction.
 
 =head2 Changes in Sys::SigAction 0.16  21 Jul 2013
 
+Fix timeout.t to use POSIX::pause() instead of select(), which was used
+to optimized the while ( 1 ) loop in the forever function. This caused
+failures on some platforms.  pause() is right solution -- thanks (again)
+to Carsten Gaebler and for the suggestion for handling the Time::HiRes
+request.
+
+More double eval documentation cleanup that had not been previously
+caught in the POD. (bug #79130).
+
+When Time::HiRes is present, allow for long timeouts longer than the
+POSIX::MAX_INT microseconds when Time::HiRes is present.  Just call
+call alarm() instead of ualarm() in the case where input argument
+would result in a msecs value in an argument to ualarm which is
+larger than POSIX::INT_MAX (and, of course, add a test for this in
+timeout.t). (bug/enhancement request #75784)
+
+Fix typos in dbd-oracle-timeout.POD (bug #87141).  It appears that
+the DBD:oracle module may now have internal handling for this problem
+(DBD::oracle not longer references Sys::SigAction).
+
+=head2 Changes in Sys::SigAction 0.16  21 Jul 2013
+
 Thanks to excellent patches from Carsten Gaebler (contact me
 if you want to contact him), timeout_call() now supports
 passing an array of arguments which it will pass to the code

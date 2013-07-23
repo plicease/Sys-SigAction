@@ -122,7 +122,7 @@ can be called, either the code will completely die because
 there is no SIGALRM handler in place to catch the signal, or the
 wrong handler (not the local handler) will be called. 
 
-All the code sames here have been adjusted to execute the code to be
+All the code samples here have been adjusted to execute the code to be
 timed out in an inner eval to correct for this problem.
 
 =head2 The Problem
@@ -131,17 +131,17 @@ Many of us have been using perl 5.6.x for several years now, and the above
 code has worked just fine.  We understood that with perl 5.6 (and prior)
 signal handling was 'unsafe', and we accepted the risk that the signal
 handler could be called at an in-opportune time, causing non-reentrant
-system routines to fail. We accepted the  possibilty of a perl core dump,
+system routines to fail. We accepted the possibility of a perl core dump,
 and program termination.  For real-time services this is considered an
 acceptable risk since failing quickly is preferable to hanging around
 without returning.
 
-We, like most programmers facing this this problem, simply built mechanisms to
+We, like most programmers facing this problem, simply built mechanisms to
 restart things should such a catastrophic failure (perl core dump) occur.
 Another technique we use, is to take ourselves out on error, letting a
 new (clean) instance of our service be created (by the above mechanism).
 
-Upon moving to perl 5.8 or higher however, we discovered that that the
+Upon moving to perl 5.8 or higher however, we discovered that the
 above code (especially the connect code) no longer works.  Instead,
 it just hangs. This is a result of the changes to the way 
 Unix signal handlers are implemented in perl 5.8 (and later versions).
@@ -177,7 +177,7 @@ signal handler between perl op codes.
 
 Using C<POSIX::sigaction()> does ensure that the signal handler is
 called when the signal is fired.  Calling die() within the signal handler,
-will cause the system call will be interupted, and control will return to the
+will cause the system call will be interrupted, and control will return to the
 perl script.  But doing this effectively implements returns us to the 
 'unsafe' signals behavior -- at least in perl 5.8.0.  In perl 5.8.2, it 
 is possible to ask for 'deferred' signal handling while still controlling
@@ -187,7 +187,7 @@ with perl 5.8.2 is safer than perl 5.6.x.
 The usage of C<POSIX::sigaction()> however is not well
 documented (except for several examples in the C<posix.t> test in the perl
 core).  And in perl versions less than 5.8.0, while C<POSIX::sigaction()>
-is defined, it appears to be broken.  But thats OK, because just setting
+is defined, it appears to be broken.  But that's OK, because just setting
 C<$SIG{NAME}> works.
 
 =head2 The Pain
@@ -231,7 +231,7 @@ Fortunately, having been bitten by this problem, and not wishing to
 have to replicate all that code every where I had timeout logic,
 I implemented a module that makes using C<POSIX::sigaction()>
 as easy as setting a localized C<$SIG{ALRM}> was in perl 5.6.x.
-The C<Sys::SigAction> module can be retrieved from from CPAN by going to:
+The C<Sys::SigAction> module can be retrieved from CPAN by going to:
 
    http://search.cpan.org/~lbaxter/Sys-SigAction/
 
@@ -269,7 +269,7 @@ to databases on hosts that are down, and long running sql statements.
 
 Note that with Sys::SigAction version 0.06, this script was changed to explicitly set
 safe=>0 (instead of safe=>1).  The reason is that Sys::SigAction (version 0.04 and less) 
-did not correctly set this paramter on the POSIX::sigaction call.  When that 
+did not correctly set this parameter on the POSIX::sigaction call.  When that 
 was fixed with version 0.06 this script had to be fixed.
 
 
