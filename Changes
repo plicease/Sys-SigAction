@@ -8,7 +8,15 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
-=head2 Changes in Sys::SigAction 0.16  21 Jul 2013
+=head2 Changes in Sys::SigAction 0.18  24 Jul 2013
+
+Fix "bareword" error on some platforms at least, by explicitly importing
+INT_MAX from POSIX module.
+
+Fix Changes file which listed verson 0.16 twice when it should have
+list version 0.17 for the more recent changes.
+
+=head2 Changes in Sys::SigAction 0.17  22 Jul 2013
 
 Fix timeout.t to use POSIX::pause() instead of select(), which was used
 to optimized the while ( 1 ) loop in the forever function. This caused

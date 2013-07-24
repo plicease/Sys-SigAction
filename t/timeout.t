@@ -26,7 +26,7 @@ use strict;
 use Carp qw( carp cluck croak confess );
 use Data::Dumper;
 use Sys::SigAction qw( set_sig_handler timeout_call );
-use POSIX  qw( pause :signal_h );
+use POSIX  qw( INT_MAX pause :signal_h );
 
 my $num_args_seen;
 my $sum_args_seen;
@@ -105,7 +105,7 @@ if ( Sys::SigAction::have_hires() )
    ok( (($etime - $btime) < 0.2 ), "hires: timeout in < 0.2 seconds" ); $num_tests++;
 
    #diag( "testing HiRes where msecs would be greater than maxint (" .POSIX::INT_MAX.")" );
-   my $toobig = POSIX::INT_MAX/1_000_000.0 + 1;
+   my $toobig = INT_MAX/1_000_000.0 + 1.1;
    $ret = 0;
    eval { 
       $ret = timeout_call( $toobig, \&sleep_one ); 

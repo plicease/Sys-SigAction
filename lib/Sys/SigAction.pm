@@ -8,40 +8,26 @@ package Sys::SigAction;
 require 5.005;
 use strict;
 #use warnings;
-use POSIX qw( :signal_h ceil ) ;
+use POSIX qw( :signal_h ceil INT_MAX ) ;
 require Exporter;
 use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 
 #support high resolution time transparently in timeout_call by defining
-#the function sig_alarm() which calls ualarm if Time::HiRes
-#is load able or alarm with the ceil of the value passed if
-#Time::HiRes is not loadable. 
+#the function sig_alarm() which calls Time::HiRes::alarm if available
+#or core alarm with the ceil of the value passed otherwise.
 #timeout_call uses sig_alarm()
-my $have_hires = 1; 
-{
-   eval "use Time::HiRes qw( ualarm )";
-   if ( $@ ) {
-      $have_hires = 0;
-   }
-}
-sub have_hires() { return $have_hires; }; #test support
+
+use constant HAVE_HIRES => scalar eval 'use Time::HiRes (); Time::HiRes::alarm(0); 1;';
+
+sub have_hires() { HAVE_HIRES }; #test support
 
 sub sig_alarm #replacement for alarm, takes factional seconds in floating point format
 {
-   my ( $secs ) = @_;
+   my $secs = shift;
    #print  print "secs=$secs\n";
-  
-   if ( $have_hires )
-   {
-      if ( $secs*1_000_000.0 > POSIX::INT_MAX)  
-      {
-         alarm( $secs );
-      }
-      else
-      {
-         $secs = $secs * 1_000_000.0;
-         ualarm( $secs );
-      }
+
+   if ( HAVE_HIRES && $secs*1_000_000 <= INT_MAX ) {
+      Time::HiRes::alarm( $secs );
    }
    else
    {
@@ -53,7 +39,7 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.17';
+$VERSION = '0.18';
 
 use Config;
 my %signame = ();
