@@ -8,6 +8,37 @@ Sys::SigAction::Changes - List of significant changes
 
 Revision history for Sys::SigAction.
 
+=head2 Changes in Sys::SigAction 0.19  27 Jul 2013
+
+Change sig_alarm() to use HiRes::ualarm() instead of
+HiRes::alarm().  Hoping to fix hires test failures
+on some platforms.
+
+Build hash structure in timeout.t to disable
+the HiRes tests on certain platforms where these functions may
+to be consistently broken, but disable them for at least
+another round, hoping that the change to using HiRes::ualarm()
+solves the problem. 
+
+Also, restructure timeout.t to hardcode the number of tests
+run.  Apparently Test::More on perl 5.8.x insisteds on getting
+the plan before ANY tests are run.
+
+Build similar structure in mask.t to disable
+the test on certain platforms were signal masking appears
+to be broken. Currently this is set to 
+
+   my $mask_broken_platforms = {
+       'archname' => { 'i686-cygwin-thread-multi-64int' => 1
+                     }
+      ,'perlver' =>  { 'v5.10.1' => 1 
+                     }
+   };
+
+
+Update Makefile.PL to note the fact the HiRes timeouts may 
+broken on some platforms.
+
 =head2 Changes in Sys::SigAction 0.18  24 Jul 2013
 
 Fix "bareword" error on some platforms at least, by explicitly importing
@@ -28,7 +59,7 @@ More double eval documentation cleanup that had not been previously
 caught in the POD. (bug #79130).
 
 When Time::HiRes is present, allow for long timeouts longer than the
-POSIX::MAX_INT microseconds when Time::HiRes is present.  Just call
+POSIX::INT_MAX microseconds when Time::HiRes is present.  Just call
 call alarm() instead of ualarm() in the case where input argument
 would result in a msecs value in an argument to ualarm which is
 larger than POSIX::INT_MAX (and, of course, add a test for this in

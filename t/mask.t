@@ -19,12 +19,26 @@ my $tests = 14;
 
 use strict;
 #use warnings;
-
-
+use Config;
 use Carp qw( carp cluck croak confess );
 use Data::Dumper;
 use POSIX ':signal_h' ;
 use Sys::SigAction qw( set_sig_handler sig_name sig_number );
+
+### identify platforms I don't think can be supported per the smoke testers
+my $mask_broken_platforms = {
+    'archname' => { 'i686-cygwin-thread-multi-64int' => 1
+                  }
+   ,'perlver' =>  { 'v5.10.1' => 1 
+                  }
+};
+
+
+my $on_broken_platform = (
+      exists ( $mask_broken_platforms->{'archname'}->{$Config{'archname'}} )
+   && exists ( $mask_broken_platforms->{'perlver'}->{$^V} )
+   );
+
 
 my $hup = 0;
 my $int = 0;
@@ -91,6 +105,8 @@ sub sigUSR_2 { #no mask
 #then we do the same thing for new sig handers on INT and USR1
 #
 SKIP: { 
+   plan skip_all => "perl $^V on $Config{'archname'} does not appear to mask signals correctly." if ( $on_broken_platform ); 
+   #plan skip_all => "masking signals is broken on at least some versions of cygwin" if ( $^O =~ /cygwin/ );
    plan skip_all => "requires perl 5.8.0 or later" if ( $] < 5.008 ); 
    plan tests => $tests;
    
@@ -99,6 +115,7 @@ SKIP: {
 #      the masked signals are not masked; when safe=>0 then it does...
 #      Not testing safe=>1 for now\n";
          
+
 
    set_sig_handler( 'HUP'  ,\&sigHUP  ,{ mask=>[ qw( INT USR1 ) ] } ); #,safe=>0 } );
    #set_sig_handler( 'HUP'  ,\&sigHUP  ,{ mask=>[ qw( INT USR1 ) ] ,safe=>undef } );

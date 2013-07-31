@@ -101,8 +101,8 @@ SKIP: {
          print STDERR "
          
          NOTE: Setting safe=>1... with masked signals does not seem to work.
-         The problem is that the masked signals are not masked, but when
-         safe=>0 they are.  
+         The problem is that the masked signals are not masked when safe=>1.
+         When safe=>0 they are.  
 
          If you have an application for safe=>1 and can come up with 
          a test that works in the context of this module's installation

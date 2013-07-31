@@ -17,7 +17,7 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 #or core alarm with the ceil of the value passed otherwise.
 #timeout_call uses sig_alarm()
 
-use constant HAVE_HIRES => scalar eval 'use Time::HiRes (); Time::HiRes::alarm(0); 1;';
+use constant HAVE_HIRES => scalar eval 'use Time::HiRes (); Time::HiRes::ualarm(0); 1;';
 
 sub have_hires() { HAVE_HIRES }; #test support
 
@@ -26,9 +26,13 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
    my $secs = shift;
    #print  print "secs=$secs\n";
 
-   if ( HAVE_HIRES && $secs*1_000_000 <= INT_MAX ) {
-      Time::HiRes::alarm( $secs );
+   if ( HAVE_HIRES && $secs <=  INT_MAX()/1_000_000 )
+   {
+      Time::HiRes::ualarm( $secs * 1_000_000 );
    }
+#   if ( HAVE_HIRES && $secs*1_000_000 <= INT_MAX ) {
+#      Time::HiRes::ualarm( $secs * 1_000_000 );
+#   }
    else
    {
       alarm( ceil( $secs ) );
@@ -39,7 +43,7 @@ sub sig_alarm #replacement for alarm, takes factional seconds in floating point 
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.18';
+$VERSION = '0.19';
 
 use Config;
 my %signame = ();
@@ -523,13 +527,35 @@ ex:
    sig_number( 'INT' ) returns the integer value of SIGINT;
 
 
+=head1 MULTITHREADED PERL
+
+
+Sys::SigAction works just fine on perls built with multithread support in 
+single threaded perl applications. However, please note that
+using Signals in a multi-thread perl application is unsupported.
+
+Read the following from perldoc perlthrtut:
+
+   ... mixing signals and threads may be problematic.
+   Implementations are platform-dependent, and even the POSIX semantics
+   may not be what you expect (and Perl doesn't even give you the full
+   POSIX API).  For example, there is no way to guarantee that a signal
+   sent to a multi-threaded Perl application will get intercepted by
+   any particular thread.
+
+That said, perl documentation for perl threading discusses a a way of
+emulating signals in multi-threaded applications, when safe signals
+is in effect. See perldoc threads and search for THREAD SIGNALLING.
+I have no test of multithreading and this module.  If you thing they
+could used compatibly, and would provide value, patches are welcome.
+
 =head1 AUTHOR
 
    Lincoln A. Baxter <lab-at-lincolnbaxter-dot-com>
 
 =head1 COPYRIGHT
 
-   Copyright (c) 2004-2009 Lincoln A. Baxter
+   Copyright (c) 2004-2013 Lincoln A. Baxter
    All rights reserved.
 
    You may distribute under the terms of either the GNU General Public
@@ -541,7 +567,11 @@ ex:
    perldoc perlvar 
    perldoc POSIX
 
-The dbd-oracle-timeout.pod file included with this module. This includes a DBD-Oracle
-test script, which illustrates the use of this module with the DBI with the DBD-Oracle
-driver.
+=head NOTE
+
+Recent versions of DBD::Oracle no longer reference this module in the
+POD, so DBD::Oracle may now have solved the connection timeout problem
+internally. For older versions, the dbd-oracle-timeout.pod file provides
+a DBD-Oracle test script, which illustrates the use of this
+module with the DBD-Oracle driver.
 

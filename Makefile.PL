@@ -31,20 +31,10 @@ eval "use threads";
 if ( ! $@ || $Config{usethreads} || $Config{useithreads} || $Config{use5005threads} ) {
    warn q{ 
    
-   Using Signals in a multi-thread perl application is unsupported 
-   by Sys::SigAction.
-
-   Read the following from perldoc perlthrtut:
-
-      ...mixing signals and threads may be problematic.
-      Implementations are platform-dependent, and even the POSIX semantics
-      may not be what you expect (and Perl doesn't even give you the full
-      POSIX API).  For example, there is no way to guarantee that a signal
-      sent to a multi-threaded Perl application will get intercepted by
-      any particular thread.
-      
-
-   You are on your own if we use this module in a multi threaded application
+   This perl has multithread support enabled, this is not a problem for
+   single threaded perl applications.
+   
+   Please see "MULTITHREAD PERL in the Sys::SigAction POD for more information
 
    Lincoln
 
@@ -66,8 +56,6 @@ if ( ( $] >= 5.008 ) &&
    
    This perl is not supported.
    Perl must be built with 'useposix' and 'sigaction' defined.
-
-   Lincoln
 
    };
 }
@@ -99,8 +87,37 @@ if ( $@ ) {
    
    );
 }
+#else
+#{
+#   warn q(
+#   Time::HiRes was found.  And factional second timeouts will be
+#   enabled.  It should be noted, that on a few perl versions and OSes
+#   that fractional second timemouts seems to fail. I will probably
+#   update
+#
+#   );
+#   The timeout.t test will attempt to notify you and avoid
+#   these tests if this is the case.  If the fractional second
+#   timeout tests fail on your platform, then the matrix in timeout.t
+#   may need to be updated.  
+#
+#   I believe these HiRes functionality is broken on these (few) perl-version
+#   and OS platform combinations.  This could be becuase the OS does not support
+#   it, or the perl implementation of Time::HiRes is broken on these platforms.
+#
+#}
 
+print "Checking for cygwin... (masking signals is broken on some versions at least)\n";
+if ( $^O =~ /cygwin/ ) {
+   warn q(
+   Smoke testers have discovered that t/mask.t fails on at least
+   some verions cygwin. Specific versions of the os and perl
+   and now protected... but others may be found. On this platforms
+   masking signals probably does not work. See the hash reference
+   \$broken_platforms for platforms known to be broken.
 
+   );
+}
 
 #ok... enough defensiveness... 
 my $args = {
