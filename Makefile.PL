@@ -77,36 +77,6 @@ if ( $Config{archname} =~ m/armv5tejl/ ) {
    };
 }
 
-print "Checking for Time::HiRes (support for fractional seconds in timeouts)\n";
-eval "use Time::HiRes qw( ualarm )";
-if ( $@ ) {
-   warn q(
-   
-   Time::HiRes is not available.  Fractional seconds in timeout_call()
-   will be raised to the next high integer value with POSIX::ceil().
-   
-   );
-}
-#else
-#{
-#   warn q(
-#   Time::HiRes was found.  And factional second timeouts will be
-#   enabled.  It should be noted, that on a few perl versions and OSes
-#   that fractional second timemouts seems to fail. I will probably
-#   update
-#
-#   );
-#   The timeout.t test will attempt to notify you and avoid
-#   these tests if this is the case.  If the fractional second
-#   timeout tests fail on your platform, then the matrix in timeout.t
-#   may need to be updated.  
-#
-#   I believe these HiRes functionality is broken on these (few) perl-version
-#   and OS platform combinations.  This could be becuase the OS does not support
-#   it, or the perl implementation of Time::HiRes is broken on these platforms.
-#
-#}
-
 print "Checking for cygwin... (masking signals is broken on some versions at least)\n";
 if ( $^O =~ /cygwin/ ) {
    warn q(
@@ -117,6 +87,96 @@ if ( $^O =~ /cygwin/ ) {
    \$broken_platforms for platforms known to be broken.
 
    );
+}
+
+my $SAAD = "lib/Sys/SigAction/" ;
+my $SAA = "$SAAD/Alarm.pm" ;
+print "Writing $SAA\n" ;
+mkdir $SAAD if ( not -d $SAAD );
+
+open( SAH, ">$SAA" );
+print SAH q(
+package Sys::SigAction::Alarm;
+require 5.005;
+use strict;
+#use warnings;
+use vars qw( @ISA @EXPORT_OK );
+require Exporter;
+@ISA = qw( Exporter );
+@EXPORT_OK = qw( ssa_alarm );
+my $have_hires = scalar eval 'use Time::HiRes; Time::HiRes::ualarm(0); 1;';
+use POSIX qw( INT_MAX ceil ) ;
+my $hrworks; 
+sub ssa_alarm($)
+{
+   my $secs = shift;
+   #print  print "secs=$secs\n";
+
+   if ( $hrworks and ($secs le (INT_MAX()/1_000_000.0) ) )
+   {
+      Time::HiRes::ualarm( $secs * 1_000_000 );
+   }
+   else
+   {
+      alarm( ceil( $secs ) );
+   }
+}
+
+sub hires_works { return $hrworks; }; #test support
+
+);
+
+print "Looking for Time::HiRes with a working ualarm()... \n" ; 
+use constant HR => eval 'use Time::HiRes; Time::HiRes::ualarm(0); 1;' ;
+sub forever { pause(); }
+sub handler { die "TIMEDOUT"; }
+my $et, $st;
+my $hr_works = 0;
+if ( not HR )
+{
+   print q(
+   Time::HiRes is not installed.
+   High resolution timeouts disabled.
+);
+}
+else {
+   print "Testing Time::HiRes::ualarm()\n" ;
+   $SIG{'ALRM'} = \&handler;
+   eval {
+      $st = Time::HiRes::time();
+      eval {
+         Time::HiRes::ualarm( 0.1 * 1_000_000 );
+         forever();
+      };
+      Time::HiRes::ualarm( 0 );
+      $et = Time::HiRes::time();
+      #print "outside forever eval\n" ;
+   };
+   my $delta = $et - $st;
+   if ( $delta < 0.8 ) {
+      print q( 
+   Time::HiRes::ualarm() exists and works.
+   High resolution timeouts enabled." 
+);
+    $hr_works = 1;
+   }
+   else
+   {
+      warn q(
+   Time::HiRes exists on this platform but Time::HiRes::ualarm
+   appears to be broken.  High resolution timeouts disabled.
+);
+   }
+}
+print SAH '$hrworks = '."$hr_works; 1;\n" ;
+close( SAH );
+print "\nWrote $SAA\n" ;
+
+if ( not $hr_works ) {
+   warn q(
+   Fractional seconds in timeout_call() may be used but will be 
+   raised to the next higher integer value with POSIX::ceil().
+);
 }
 
 #ok... enough defensiveness... 

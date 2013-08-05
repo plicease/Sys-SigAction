@@ -1,5 +1,4 @@
 Changes
-lib/Sys/SigAction.pm
 Makefile.PL
 META.yml			Module meta-data (added by MakeMaker)
 README

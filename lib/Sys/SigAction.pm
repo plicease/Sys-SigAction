@@ -1,5 +1,5 @@
 #
-#   Copyright (c) 2004-2009 Lincoln A. Baxter
+#   Copyright (c) 2004-2013 Lincoln A. Baxter
 #
 #   You may distribute under the terms of either the GNU General Public
 #   License or the Artistic License, as specified in the Perl README file,
@@ -17,33 +17,19 @@ use vars qw( $VERSION @ISA @EXPORT_OK %EXPORT_TAGS );
 #or core alarm with the ceil of the value passed otherwise.
 #timeout_call uses sig_alarm()
 
-use constant HAVE_HIRES => scalar eval 'use Time::HiRes (); Time::HiRes::ualarm(0); 1;';
-
-sub have_hires() { HAVE_HIRES }; #test support
-
-sub sig_alarm #replacement for alarm, takes factional seconds in floating point format
+#replacement for alarm, factional second arg in floating point format:
+use Sys::SigAction::Alarm qw( ssa_alarm );
+sub sig_alarm 
 {
    my $secs = shift;
-   #print  print "secs=$secs\n";
-
-   if ( HAVE_HIRES && $secs <=  INT_MAX()/1_000_000 )
-   {
-      Time::HiRes::ualarm( $secs * 1_000_000 );
-   }
-#   if ( HAVE_HIRES && $secs*1_000_000 <= INT_MAX ) {
-#      Time::HiRes::ualarm( $secs * 1_000_000 );
-#   }
-   else
-   {
-      alarm( ceil( $secs ) );
-   }
+   ssa_alarm( $secs );
 }
 
 #use Data::Dumper;
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.19';
+$VERSION = '0.20';
 
 use Config;
 my %signame = ();
@@ -285,7 +271,10 @@ Also implemented is C<timeout_call()> which takes a timeout value, a
 code reference and optional arguments, and executes the code reference
 wrapped with an alarm timeout. timeout_call accepts seconds in floating
 point format, so you can time out call with a resolution of 0.000001
-seconds (assumes Time::HiRes is loadable).
+seconds. If C<Time::HiRes> is not loadable or C<Time::HiRes::ualarm()> does
+not work, then the factional part of the time value passed to C<timeout_call()>
+will be raise to the next higher integer with POSIX::ceil(). This means
+that the shortest a timeout can be in 1 second.
  
 
 Finally, two convenience routines are defined which allow one to get the
