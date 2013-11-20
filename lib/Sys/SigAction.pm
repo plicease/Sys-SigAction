@@ -29,7 +29,7 @@ sub sig_alarm
 
 @ISA = qw( Exporter );
 @EXPORT_OK = qw( set_sig_handler timeout_call sig_name sig_number sig_alarm );
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 use Config;
 my %signame = ();
@@ -535,8 +535,8 @@ Read the following from perldoc perlthrtut:
 That said, perl documentation for perl threading discusses a a way of
 emulating signals in multi-threaded applications, when safe signals
 is in effect. See perldoc threads and search for THREAD SIGNALLING.
-I have no test of multithreading and this module.  If you thing they
-could used compatibly, and would provide value, patches are welcome.
+I have no test of multithreading and this module.  If you think they
+could be used compatibly and would provide value, patches are welcome.
 
 =head1 AUTHOR
 
@@ -556,11 +556,4 @@ could used compatibly, and would provide value, patches are welcome.
    perldoc perlvar 
    perldoc POSIX
 
-=head NOTE
-
-Recent versions of DBD::Oracle no longer reference this module in the
-POD, so DBD::Oracle may now have solved the connection timeout problem
-internally. For older versions, the dbd-oracle-timeout.pod file provides
-a DBD-Oracle test script, which illustrates the use of this
-module with the DBD-Oracle driver.
 

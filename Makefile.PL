@@ -34,7 +34,7 @@ if ( ! $@ || $Config{usethreads} || $Config{useithreads} || $Config{use5005threa
    This perl has multithread support enabled, this is not a problem for
    single threaded perl applications.
    
-   Please see "MULTITHREAD PERL in the Sys::SigAction POD for more information
+   Please see "MULTITHREAD PERL" in the Sys::SigAction POD for more information.
 
    Lincoln
 
@@ -82,14 +82,14 @@ if ( $^O =~ /cygwin/ ) {
    warn q(
    Smoke testers have discovered that t/mask.t fails on at least
    some verions cygwin. Specific versions of the os and perl
-   and now protected... but others may be found. On this platforms
+   are now protected... but others may be found. On these platforms
    masking signals probably does not work. See the hash reference
    \$broken_platforms for platforms known to be broken.
 
    );
 }
 
-my $SAAD = "lib/Sys/SigAction/" ;
+my $SAAD = "lib/Sys/SigAction" ;
 my $SAA = "$SAAD/Alarm.pm" ;
 print "Writing $SAA\n" ;
 mkdir $SAAD if ( not -d $SAAD );
@@ -152,9 +152,10 @@ else {
       $et = Time::HiRes::time();
       #print "outside forever eval\n" ;
    };
+   Time::HiRes::ualarm( 0 );
    my $delta = $et - $st;
    if ( $delta < 0.8 ) {
-      print q( 
+      print qq( 
    Time::HiRes::ualarm() exists and works.
    High resolution timeouts enabled." 
 );
@@ -162,8 +163,8 @@ else {
    }
    else
    {
-      warn q(
-   Time::HiRes exists on this platform but Time::HiRes::ualarm
+      warn qq(
+   Time::HiRes exists on this platform but Time::HiRes::ualarm()
    appears to be broken.  High resolution timeouts disabled.
 );
    }
@@ -173,7 +174,7 @@ close( SAH );
 print "\nWrote $SAA\n" ;
 
 if ( not $hr_works ) {
-   warn q(
+   warn qq(
    Fractional seconds in timeout_call() may be used but will be 
    raised to the next higher integer value with POSIX::ceil().
 );
