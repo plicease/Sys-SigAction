@@ -7,7 +7,7 @@ use ExtUtils::MakeMaker;
 #
 print "Checking for Microsoft Windows... (not supported)\n";
 if ( $^O =~ /MSWin32/ ) {
-   die q{ 
+   die qq{ 
    
    OS unsupported
 
